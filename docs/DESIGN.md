@@ -332,9 +332,10 @@ Full build: `nrfx_i2s_next_buffers_set` writes TXD.PTR before it updates its sta
 
 ## References
 
-- [SP-1-dev](https://github.com/timknapen/SP-1-dev): pins, I2S, I2C initialisation, bootloader constraints
-- [sp1-tape-looper](https://github.com/chattock/sp1-tape-looper): Zephyr + UAC2 implementation, measured button ladder values, power-off and recovery approach
-- [feldd](https://github.com/bnjreece/feldd-sp1-firmware): watchdog, boot policy, TRS jack pins
+- [SP-1-dev](https://github.com/timknapen/SP-1-dev) by Tim Knapen (MIT): pins, I2S, I2C initialisation, bootloader constraints
+- [sp1-tape-looper](https://github.com/chattock/sp1-tape-looper) by chattock (MIT): Zephyr + UAC2 implementation, measured button ladder values, power-off and recovery approach
+- [feldd](https://github.com/bnjreece/feldd-sp1-firmware) by Benjamin Reece (MIT): watchdog, boot policy, TRS jack pins
+- Their license notices: [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)
 - [Zephyr v4.3.1 udc_nrf.c](https://github.com/zephyrproject-rtos/zephyr/blob/v4.3.1/drivers/usb/udc/udc_nrf.c), [usbd_uac2_macros.h](https://github.com/zephyrproject-rtos/zephyr/blob/v4.3.1/subsys/usb/device_next/class/usbd_uac2_macros.h)
 - [Microsoft: USB Audio 2.0 drivers](https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/usb-2-0-audio-drivers)
 - [TI TAS2505 application reference guide (SLAU472C)](https://www.ti.com/lit/ug/slau472c/slau472c.pdf)

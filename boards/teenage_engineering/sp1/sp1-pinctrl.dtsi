@@ -1,7 +1,8 @@
 /*
  * SPDX-License-Identifier: MIT
  *
- * Pins from timknapen/SP-1-dev src/stemplayer_pins.h.
+ * Pins from timknapen/SP-1-dev src/stemplayer_pins.h
+ * (Copyright (c) 2026 Tim Knapen, MIT; see THIRD_PARTY_NOTICES.md).
  */
 
 &pinctrl {

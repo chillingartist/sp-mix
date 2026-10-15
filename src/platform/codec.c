@@ -6,6 +6,8 @@
  *   section 5.1 power-up sequence. 24-bit ASP channels.
  * - TAS2505: SLAU472C; PLL locked to the bit clock as used by the
  *   sp1-tape-looper project, with 24-bit words and the (L+R)/2 DAC input.
+ * SP-1-dev: Copyright (c) 2026 Tim Knapen; sp1-tape-looper: Copyright (c)
+ * 2026 chattock; both MIT, see THIRD_PARTY_NOTICES.md.
  */
 
 #include <errno.h>

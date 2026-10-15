@@ -273,9 +273,11 @@ Both generators use only the Python 3 standard library.
 ## Credits and references
 
 - [Zephyr Project](https://zephyrproject.org): the RTOS and USB device stack this firmware is built on.
-- [timknapen/SP-1-dev](https://github.com/timknapen/SP-1-dev): SP-1 hardware documentation, including pins, I2S and I2C, the CS42L42 initialization sequence and the bootloader constraints.
-- [chattock/sp1-tape-looper](https://github.com/chattock/sp1-tape-looper): a Zephyr and UAC2 firmware for the SP-1. The measured button ladder levels, the TAS2505 clock setup, and the power-off and recovery approach come from it.
-- [bnjreece/feldd-sp1-firmware](https://github.com/bnjreece/feldd-sp1-firmware): watchdog handling, power-up policy and the TRS jack pins.
+- [SP-1-dev](https://github.com/timknapen/SP-1-dev) by **Tim Knapen** (MIT): SP-1 hardware documentation, including pins, I2S and I2C, the CS42L42 initialization sequence and the bootloader constraints.
+- [sp1-tape-looper](https://github.com/chattock/sp1-tape-looper) by **chattock** (MIT): a Zephyr and UAC2 firmware for the SP-1. The measured button ladder levels, the TAS2505 clock setup, and the power-off and recovery approach come from it.
+- [feldd-sp1-firmware](https://github.com/bnjreece/feldd-sp1-firmware) by **Benjamin Reece** (MIT): watchdog handling, power-up policy and the TRS jack pins.
+
+Their copyright and license notices are reproduced in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - [Solderless web updater](https://solderless.engineering): web tool for flashing the SP-1 through its bootloader.
 - Zephyr v4.3.1 sources patched here: [udc_nrf.c](https://github.com/zephyrproject-rtos/zephyr/blob/v4.3.1/drivers/usb/udc/udc_nrf.c) and [usbd_uac2_macros.h](https://github.com/zephyrproject-rtos/zephyr/blob/v4.3.1/subsys/usb/device_next/class/usbd_uac2_macros.h).
 - [Microsoft: USB Audio 2.0 drivers](https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/usb-2-0-audio-drivers).
@@ -283,4 +285,4 @@ Both generators use only the Python 3 standard library.
 
 ## License
 
-Copyright (c) 2026 chillingartist. This project is released under the MIT License (see [LICENSE](LICENSE)), except for `zephyr-patches/`. Those files modify Zephyr and remain under Zephyr's Apache License 2.0.
+Copyright (c) 2026 chillingartist. This project is released under the MIT License (see [LICENSE](LICENSE)), except for `zephyr-patches/`. Those files modify Zephyr and remain under Zephyr's Apache License 2.0. Material from SP-1-dev (Tim Knapen), sp1-tape-looper (chattock) and feldd-sp1-firmware (Benjamin Reece), all MIT licensed, is credited with their notices in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

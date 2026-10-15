@@ -6,6 +6,8 @@
  * Hardware facts from timknapen/SP-1-dev (pins, I2S/I2C, bootloader rules).
  * SAADC channel settings match the configuration under which the
  * sp1-tape-looper project measured the button ladder levels.
+ * SP-1-dev: Copyright (c) 2026 Tim Knapen; sp1-tape-looper: Copyright (c)
+ * 2026 chattock; both MIT, see THIRD_PARTY_NOTICES.md.
  */
 
 /dts-v1/;

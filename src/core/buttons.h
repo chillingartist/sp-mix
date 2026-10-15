@@ -7,7 +7,8 @@
  *
  * Levels are raw 12-bit SAADC codes (gain 1/6, internal 0.6 V reference,
  * 20 us acquisition, ladders powered from P1.10) as measured on hardware by
- * the sp1-tape-looper project.
+ * the sp1-tape-looper project (Copyright (c) 2026 chattock, MIT; see
+ * THIRD_PARTY_NOTICES.md).
  */
 
 #ifndef SP1M_BUTTONS_H_
