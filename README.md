@@ -272,7 +272,7 @@ Both generators use only the Python 3 standard library.
 
 ## Credits and references
 
-**Acknowledgements:** @TKT for [solderless.engineering](https://solderless.engineering), which makes flashing and testing custom firmware possible; @timknapen for [SP-1-dev](https://github.com/timknapen/SP-1-dev), the hardware documentation (pin map, codec and clock notes, bootloader) this firmware is built on; @chattock (Technics) and @futuremarc for the [tape looper firmware](https://github.com/chattock/sp1-tape-looper), whose work this builds on; and @bnjreece for [feldd](https://github.com/bnjreece/feldd-sp1-firmware), whose watchdog and power handling informed this one.
+**Acknowledgements:** TKT for [solderless.engineering](https://solderless.engineering), which makes flashing and testing custom firmware possible; Tim Knapen for [SP-1-dev](https://github.com/timknapen/SP-1-dev), the hardware documentation (pin map, codec and clock notes, bootloader) this firmware is built on; chattock (Technics) and marc ([marcabisamra](https://github.com/marcabisamra)) for the [tape looper firmware](https://github.com/chattock/sp1-tape-looper), whose work this builds on; and Benjamin Reece for [feldd](https://github.com/bnjreece/feldd-sp1-firmware), whose watchdog and power handling informed this one.
 
 - [Zephyr Project](https://zephyrproject.org): the RTOS and USB device stack this firmware is built on.
 - [SP-1-dev](https://github.com/timknapen/SP-1-dev) by **Tim Knapen** (MIT): SP-1 hardware documentation, including pins, I2S and I2C, the CS42L42 initialization sequence and the bootloader constraints.
