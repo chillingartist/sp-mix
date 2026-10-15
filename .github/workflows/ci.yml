@@ -3,8 +3,10 @@
 # host-tests: unit tests of the portable core (src/core) on the build host.
 # firmware:   builds the m0, m1 and full variants with Zephyr v4.3.1 and
 #             uploads zephyr.bin and zephyr.elf for each.
-# release:    on a v* tag, creates a draft GitHub release with the firmware
-#             of all three variants and the tag's CHANGELOG section.
+# release:    on a v* tag, or when run by hand with a version, creates a
+#             draft GitHub release with the firmware of all three variants
+#             and that version's CHANGELOG section. A release run by hand
+#             creates its tag on the built commit when it is published.
 
 name: CI
 
@@ -14,6 +16,11 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Make a draft release, e.g. v0.1.0 (empty: just build)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -94,7 +101,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.version != ''
     needs: [host-tests, firmware]
     runs-on: ubuntu-latest
     permissions:
@@ -114,7 +121,7 @@ jobs:
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.version || github.ref_name }}
         run: |
           mkdir dist
           for v in m0 m1 full; do
@@ -129,5 +136,10 @@ jobs:
           if [ ! -s notes.md ]; then
             echo "See CHANGELOG.md." > notes.md
           fi
-          gh release create "$TAG" dist/* --draft --verify-tag \
+          case "$TAG" in
+            v[0-9]*) ;;
+            *) echo "version must look like v0.1.0, got '$TAG'"; exit 1 ;;
+          esac
+          gh release create "$TAG" dist/* --draft --target "$GITHUB_SHA" \
+            --repo "$GITHUB_REPOSITORY" \
             --title "SP-1 Mixer $TAG" --notes-file notes.md
