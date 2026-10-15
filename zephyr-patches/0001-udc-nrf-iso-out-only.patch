@@ -1,0 +1,64 @@
+SPDX-License-Identifier: Apache-2.0
+This patch modifies the Zephyr Project, which is licensed under Apache-2.0.
+
+udc_nrf: add CONFIG_UDC_NRF_ISO_OUT_ONLY, which sets ISOSPLIT to OneDir so the
+whole 1 KiB isochronous buffer serves ISO OUT (packets up to 1023 bytes).
+Against Zephyr v4.3.1; applied by scripts/apply-zephyr-patches.sh.
+
+diff --git a/drivers/usb/udc/Kconfig.nrf b/drivers/usb/udc/Kconfig.nrf
+index bcb0e1f0..5381cc77 100644
+--- a/drivers/usb/udc/Kconfig.nrf
++++ b/drivers/usb/udc/Kconfig.nrf
+@@ -19,4 +19,11 @@ config UDC_NRF_THREAD_STACK_SIZE
+ 	help
+ 	  Size of the stack used in the driver for nRF USBD ISR event handling.
+ 
++config UDC_NRF_ISO_OUT_ONLY
++	bool "Dedicate the whole isochronous buffer to ISO OUT"
++	help
++	  Set ISOSPLIT to OneDir so the full 1 KiB isochronous buffer serves the
++	  ISO OUT endpoint, allowing packets of up to 1023 bytes (for example
++	  8-channel 16-bit 48 kHz audio). The ISO IN endpoint cannot be used.
++
+ endif # UDC_NRF
+diff --git a/drivers/usb/udc/udc_nrf.c b/drivers/usb/udc/udc_nrf.c
+index 7b18862f..e2790fed 100644
+--- a/drivers/usb/udc/udc_nrf.c
++++ b/drivers/usb/udc/udc_nrf.c
+@@ -835,7 +835,11 @@ static void nrf_usbd_legacy_enable(void)
+ 		__DSB();
+ 	}
+ 
++#if defined(CONFIG_UDC_NRF_ISO_OUT_ONLY)
++	NRF_USBD->ISOSPLIT = USBD_ISOSPLIT_SPLIT_OneDir << USBD_ISOSPLIT_SPLIT_Pos;
++#else
+ 	NRF_USBD->ISOSPLIT = USBD_ISOSPLIT_SPLIT_HalfIN << USBD_ISOSPLIT_SPLIT_Pos;
++#endif
+ 
+ 	if (IS_ENABLED(CONFIG_NRF_USBD_ISO_IN_ZLP)) {
+ 		NRF_USBD->ISOINCONFIG = USBD_ISOINCONFIG_RESPONSE_ZeroData
+@@ -1821,7 +1825,9 @@ static int udc_nrf_driver_init(const struct device *dev)
+ 			ep_cfg_out[i].caps.mps = NRF_USBD_COMMON_EPSIZE;
+ 		} else {
+ 			ep_cfg_out[i].caps.iso = 1;
+-			ep_cfg_out[i].caps.mps = NRF_USBD_COMMON_ISOSIZE / 2;
++			ep_cfg_out[i].caps.mps =
++				IS_ENABLED(CONFIG_UDC_NRF_ISO_OUT_ONLY) ?
++				NRF_USBD_COMMON_ISOSIZE : NRF_USBD_COMMON_ISOSIZE / 2;
+ 		}
+ 
+ 		ep_cfg_out[i].addr = USB_EP_DIR_OUT | i;
+@@ -1843,7 +1849,12 @@ static int udc_nrf_driver_init(const struct device *dev)
+ 			ep_cfg_in[i].caps.mps = NRF_USBD_COMMON_EPSIZE;
+ 		} else {
+ 			ep_cfg_in[i].caps.iso = 1;
+-			ep_cfg_in[i].caps.mps = NRF_USBD_COMMON_ISOSIZE / 2;
++			/* With ISO_OUT_ONLY the IN half of the buffer does not exist:
++			 * a zero limit makes every ISO IN configuration fail.
++			 */
++			ep_cfg_in[i].caps.mps =
++				IS_ENABLED(CONFIG_UDC_NRF_ISO_OUT_ONLY) ?
++				0 : NRF_USBD_COMMON_ISOSIZE / 2;
+ 		}
+ 
+ 		ep_cfg_in[i].addr = USB_EP_DIR_IN | i;

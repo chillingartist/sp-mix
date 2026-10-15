@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: MIT
+
+board:
+  name: sp1
+  full_name: Teenage Engineering SP-1
+  socs:
+    - name: nrf52840

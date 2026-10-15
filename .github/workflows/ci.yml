@@ -1,0 +1,133 @@
+# SPDX-License-Identifier: MIT
+#
+# host-tests: unit tests of the portable core (src/core) on the build host.
+# firmware:   builds the m0, m1 and full variants with Zephyr v4.3.1 and
+#             uploads zephyr.bin and zephyr.elf for each.
+# release:    on a v* tag, creates a draft GitHub release with the firmware
+#             of all three variants and the tag's CHANGELOG section.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake ninja-build gcc
+
+      - name: Configure
+        run: cmake -S tests/host -B build-host -G Ninja
+
+      - name: Build
+        run: cmake --build build-host
+
+      - name: Run
+        run: ./build-host/sp1m_tests
+
+  firmware:
+    name: firmware (${{ matrix.variant }})
+    runs-on: ubuntu-latest
+    # Zephyr CI image with Zephyr SDK 0.17.4: the image Zephyr v4.3.1's own
+    # CI uses (as ci-repo-cache:v0.28.6.20251003).
+    container:
+      image: ghcr.io/zephyrproject-rtos/ci:v0.28.6
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [m0, m1, full]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          path: sp1mixer
+          persist-credentials: false
+          # Tags too: 'status' shows git describe of the build (e.g. v0.1.0)
+          fetch-depth: 0
+
+      - name: Set up the west workspace
+        run: |
+          # The workspace is owned by another UID than the container user
+          git config --global --add safe.directory '*'
+          west init -l sp1mixer
+          west update --narrow -o=--depth=1
+          # HOME differs from the image's user, so the SDK's CMake package
+          # registration is not found: point at the SDK directly.
+          echo "ZEPHYR_SDK_INSTALL_DIR=/opt/toolchains/zephyr-sdk-${ZSDK_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Apply Zephyr patches
+        run: sp1mixer/scripts/apply-zephyr-patches.sh
+
+      - name: Build ${{ matrix.variant }}
+        run: sp1mixer/scripts/build.sh ${{ matrix.variant }}
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: sp1mixer-${{ matrix.variant }}
+          path: |
+            sp1mixer/build-${{ matrix.variant }}/zephyr/zephyr.bin
+            sp1mixer/build-${{ matrix.variant }}/zephyr/zephyr.elf
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [host-tests, firmware]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Download firmware
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: sp1mixer-*
+          path: artifacts
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          mkdir dist
+          for v in m0 m1 full; do
+            cp "artifacts/sp1mixer-$v/zephyr.bin" "dist/sp1mixer-$v.bin"
+            cp "artifacts/sp1mixer-$v/zephyr.elf" "dist/sp1mixer-$v.elf"
+          done
+          # Notes: this version's section of CHANGELOG.md
+          ver="${TAG#v}"
+          awk -v v="$ver" '
+            /^## \[/ { on = index($0, "[" v "]") > 0; next }
+            on' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "See CHANGELOG.md." > notes.md
+          fi
+          gh release create "$TAG" dist/* --draft --verify-tag \
+            --title "SP-1 Mixer $TAG" --notes-file notes.md

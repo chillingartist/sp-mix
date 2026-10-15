@@ -1,0 +1,91 @@
+# SPDX-License-Identifier: MIT
+
+mainmenu "SP-1 Mixer"
+
+menu "SP-1 Mixer"
+
+config SP1M_VARIANT
+	string "Build variant name"
+	default "full"
+	help
+	  Shown by the status command: m0 (safety base), m1 (USB probe) or
+	  full.
+
+config SP1M_USB
+	bool "USB device"
+	default y
+	select USB_DEVICE_STACK_NEXT
+
+config SP1M_UAC2
+	bool "USB Audio Class 2 input (8 channels)"
+	default y
+	depends on SP1M_USB
+	select USBD_AUDIO2_CLASS
+	help
+	  Without SP1M_AUDIO_OUT the received audio is only counted (USB
+	  probe build for milestone M1).
+
+config SP1M_CDC
+	bool "USB serial console"
+	default y
+	depends on SP1M_USB
+	select USBD_CDC_ACM_CLASS
+	select SERIAL
+	select UART_INTERRUPT_DRIVEN
+	select UART_LINE_CTRL
+
+config SP1M_AUDIO_OUT
+	bool "Audio output: codecs, I2S, mixer, ASRC"
+	default y
+	select I2S
+	select I2C
+	select NRFX_GPPI
+
+config SP1M_USB_VID
+	hex "USB vendor ID"
+	default 0x1209
+
+config SP1M_USB_PID
+	hex "USB product ID"
+	default 0x0001
+	help
+	  pid.codes test ID. Use a registered ID before publishing builds.
+
+config SP1M_USB_BCD_DEVICE
+	hex "USB device release number"
+	default 0x0100
+	help
+	  Each build variant reports a different descriptor set; distinct
+	  release numbers make Windows re-read them.
+
+config SP1M_HP_ATTEN_DB
+	int "Headphone level cap below the CS42L42 maximum, dB"
+	depends on SP1M_AUDIO_OUT
+	range 0 62
+	default 12
+	help
+	  Fixed attenuation in the CS42L42 mixer, under the master volume.
+	  0 gives the chip's (and the stock firmware's) full headphone level.
+
+config SP1M_TARGET_FILL
+	int "USB ring buffer fill set point (frames)"
+	default 240
+	help
+	  Linearised fill the clock loop regulates to; 48 frames = 1 ms.
+
+config SP1M_I2S_BLOCKS
+	int "I2S blocks in flight"
+	default 4
+	range 2 6
+	help
+	  How late the audio thread may be before the I2S output runs dry,
+	  in 1.33 ms blocks; each block also adds that much output latency.
+	  Not above I2S_NRFX_TX_BLOCK_COUNT.
+
+endmenu
+
+# Codec register writes are a few bytes: fail fast instead of after 500 ms
+configdefault I2C_NRFX_TRANSFER_TIMEOUT
+	default 20
+
+source "Kconfig.zephyr"

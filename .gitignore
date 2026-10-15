@@ -1,0 +1,14 @@
+# Firmware build directories (scripts/build.sh, west build)
+build/
+build-*/
+
+# Python
+__pycache__/
+*.pyc
+
+# Test WAVs written by tools/channel-test.py and tools/mixer-test.py
+*.wav
+
+# Editor and OS files
+.vscode/
+.DS_Store

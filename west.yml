@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: MIT
+#
+# SP-1 Mixer west manifest (application is the manifest repository).
+#
+#   west init -l sp1mixer
+#   west update --narrow -o=--depth=1
+#   sp1mixer/scripts/apply-zephyr-patches.sh
+#
+# Only the modules an nRF52840 build needs are pulled.
+
+manifest:
+  self:
+    path: sp1mixer
+
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos
+      revision: v4.3.1
+      import:
+        name-allowlist:
+          - cmsis
+          - cmsis_6
+          - hal_nordic

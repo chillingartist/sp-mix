@@ -1,0 +1,76 @@
+SPDX-License-Identifier: Apache-2.0
+This patch modifies the Zephyr Project, which is licensed under Apache-2.0.
+
+usbd_uac2: add an 'adaptive' property for isochronous OUT streaming
+interfaces: adaptive synchronization type, no explicit feedback endpoint.
+Against Zephyr v4.3.1; applied by scripts/apply-zephyr-patches.sh.
+
+diff --git a/dts/bindings/usb/uac2/zephyr,uac2-audio-streaming.yaml b/dts/bindings/usb/uac2/zephyr,uac2-audio-streaming.yaml
+index d1742344..d7a96e7a 100644
+--- a/dts/bindings/usb/uac2/zephyr,uac2-audio-streaming.yaml
++++ b/dts/bindings/usb/uac2/zephyr,uac2-audio-streaming.yaml
+@@ -29,6 +29,13 @@ properties:
+     description: |
+       Enable if audio stream is not transmitted over USB (Type IV Audio Stream).
+ 
++  adaptive:
++    type: boolean
++    description: |
++      Use adaptive synchronization on the isochronous OUT data endpoint. The
++      linked terminal must use a clock that is not sof-synchronized. No
++      feedback endpoint is created; the device adapts to the host data rate.
++
+   implicit-feedback:
+     type: boolean
+     description: |
+diff --git a/subsys/usb/device_next/class/usbd_uac2_macros.h b/subsys/usb/device_next/class/usbd_uac2_macros.h
+index bd83a3c4..cf02a126 100644
+--- a/subsys/usb/device_next/class/usbd_uac2_macros.h
++++ b/subsys/usb/device_next/class/usbd_uac2_macros.h
+@@ -627,9 +627,13 @@
+ #define AS_IS_SOF_SYNCHRONIZED(node)						\
+ 	CLK_IS_SOF_SYNCHRONIZED(AS_CLK_SOURCE(node))
+ 
++#define AS_IS_ADAPTIVE(node)							\
++	UTIL_AND(DT_PROP(node, adaptive), AS_IS_USB_ISO_OUT(node))
++
+ #define AS_HAS_EXPLICIT_FEEDBACK_ENDPOINT(node)					\
+ 	UTIL_AND(UTIL_AND(AS_HAS_ISOCHRONOUS_DATA_ENDPOINT(node),		\
+-			UTIL_NOT(DT_PROP(node, implicit_feedback))),		\
++			UTIL_AND(UTIL_NOT(DT_PROP(node, implicit_feedback)),	\
++				UTIL_NOT(DT_PROP(node, adaptive)))),		\
+ 		UTIL_AND(UTIL_NOT(AS_IS_SOF_SYNCHRONIZED(node)),		\
+ 			AS_IS_USB_ISO_OUT(node)))
+ 
+@@ -713,7 +717,7 @@
+ #define AS_HS_DATA_EP_BINTERVAL(node)						\
+ 	USB_HS_ISO_EP_INTERVAL(DT_PROP_OR(node, polling_period_us, 125))
+ 
+-/* Asynchronous endpoints needs space for 1 extra sample */
++/* Asynchronous and adaptive endpoints needs space for 1 extra sample */
+ #define AS_SAMPLES_PER_FRAME(node)						\
+ 	(((ROUND_UP(AS_CLK_MAX_FREQUENCY(node), 1000) / 1000)			\
+ 	  << (AS_FS_DATA_EP_BINTERVAL(node) - 1)) +				\
+@@ -725,7 +729,8 @@
+ 	 UTIL_NOT(AS_IS_SOF_SYNCHRONIZED(node)))
+ 
+ #define AS_DATA_EP_SYNC_TYPE(node)						\
+-	COND_CODE_1(AS_IS_SOF_SYNCHRONIZED(node), (0x3 << 2), (0x1 << 2))
++	COND_CODE_1(AS_IS_SOF_SYNCHRONIZED(node), (0x3 << 2),			\
++		(COND_CODE_1(AS_IS_ADAPTIVE(node), (0x2 << 2), (0x1 << 2))))
+ 
+ #define AS_DATA_EP_USAGE_TYPE(node)						\
+ 	COND_CODE_1(UTIL_AND(DT_PROP(node, implicit_feedback),			\
+@@ -1115,6 +1120,12 @@
+ 		BUILD_ASSERT(!DT_PROP(node, implicit_feedback) ||		\
+ 			!AS_IS_SOF_SYNCHRONIZED(node),				\
+ 			"Implicit feedback on SOF synchronized clock");		\
++		BUILD_ASSERT(!DT_PROP(node, adaptive) ||			\
++			(AS_IS_USB_ISO_OUT(node) &&				\
++			 !AS_IS_SOF_SYNCHRONIZED(node) &&			\
++			 !DT_PROP(node, implicit_feedback)),			\
++			"Adaptive needs an OUT endpoint on a free running "	\
++			"clock without implicit feedback");			\
+ 		IF_ENABLED(AS_HAS_ISOCHRONOUS_DATA_ENDPOINT(node), (		\
+ 			VALIDATE_AS_BANDWIDTH(node)))				\
+ 	))

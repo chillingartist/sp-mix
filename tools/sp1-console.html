@@ -1,0 +1,1127 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MIT -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SP-1 Mixer Console</title>
+<style>
+:root {
+	--bg: #f6f6f4;
+	--panel: #ffffff;
+	--text: #1d1d1b;
+	--muted: #6b6b66;
+	--line: #deded8;
+	--accent: #2f6fde;
+	--accent-soft: #dfe9fb;
+	--ok: #1f8a4c;
+	--ok-soft: #dcf2e4;
+	--warn: #b26a00;
+	--warn-soft: #fbedd5;
+	--bad: #c0392b;
+	--bad-soft: #f8dedb;
+	--band-a: #eceae4;
+	--band-b: #e2e0d9;
+	--mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--bg: #161615;
+		--panel: #20201f;
+		--text: #ecece8;
+		--muted: #9a9a94;
+		--line: #353533;
+		--accent: #6b9cf0;
+		--accent-soft: #23314b;
+		--ok: #5cc98a;
+		--ok-soft: #1c3326;
+		--warn: #e2a64a;
+		--warn-soft: #3a2d17;
+		--bad: #ec7b6e;
+		--bad-soft: #3d2220;
+		--band-a: #2a2a28;
+		--band-b: #323230;
+	}
+}
+:root[data-theme="dark"] {
+	--bg: #161615; --panel: #20201f; --text: #ecece8; --muted: #9a9a94;
+	--line: #353533; --accent: #6b9cf0; --accent-soft: #23314b;
+	--ok: #5cc98a; --ok-soft: #1c3326; --warn: #e2a64a; --warn-soft: #3a2d17;
+	--bad: #ec7b6e; --bad-soft: #3d2220; --band-a: #2a2a28; --band-b: #323230;
+}
+* { box-sizing: border-box; }
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--text);
+	font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+header {
+	display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+	padding: 14px 16px; border-bottom: 1px solid var(--line); background: var(--panel);
+}
+header h1 { font-size: 17px; margin: 0 8px 0 0; }
+.pill {
+	font-size: 13px; padding: 2px 10px; border-radius: 999px;
+	background: var(--band-a); color: var(--muted);
+}
+.pill.on { background: var(--ok-soft); color: var(--ok); }
+button {
+	font: inherit; padding: 6px 14px; border-radius: 8px; cursor: pointer;
+	border: 1px solid var(--line); background: var(--panel); color: var(--text);
+}
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button:disabled { opacity: .5; cursor: default; }
+.spacer { flex: 1; }
+nav { display: flex; gap: 4px; padding: 0 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+nav button { border: 0; border-radius: 0; border-bottom: 2px solid transparent; background: none; padding: 10px 12px; color: var(--muted); }
+nav button.active { color: var(--text); border-bottom-color: var(--accent); }
+main { max-width: 1040px; margin: 0 auto; padding: 16px; }
+section.card {
+	background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+	padding: 16px; margin-bottom: 16px;
+}
+section.card h2 { font-size: 15px; margin: 0 0 12px; }
+.hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+.notice { padding: 12px 14px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); margin-bottom: 16px; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.btns span {
+	min-width: 64px; text-align: center; padding: 6px 10px; border-radius: 8px;
+	border: 1px solid var(--line); color: var(--muted); font-size: 13px;
+}
+.btns span.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ladder { margin-top: 14px; }
+.ladder .row { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+.ladder .row b { color: var(--text); font-family: var(--mono); font-weight: 600; }
+.scale { position: relative; height: 26px; margin: 6px 0 2px; border-radius: 6px; overflow: hidden; background: var(--band-a); }
+.scale .band { position: absolute; top: 0; bottom: 0; }
+.scale .band:nth-child(odd) { background: var(--band-b); }
+.scale .band.cur { background: var(--accent-soft); }
+.scale .mark { position: absolute; top: -2px; bottom: -2px; width: 3px; margin-left: -1px; background: var(--accent); }
+.faders { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.fader { text-align: center; font-size: 13px; }
+.fader .track { position: relative; height: 140px; width: 28px; margin: 6px auto; border-radius: 6px; background: var(--band-a); }
+.fader .fill { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 6px; background: var(--accent); }
+.fader .seen { position: absolute; left: -6px; right: -6px; border-top: 2px dashed var(--muted); }
+.fader code { font-family: var(--mono); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { color: var(--muted); font-weight: 500; font-size: 13px; }
+td.num { font-family: var(--mono); }
+tr.current td { background: var(--accent-soft); }
+.tag { font-size: 12px; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.tag.ok { background: var(--ok-soft); color: var(--ok); }
+.tag.warn { background: var(--warn-soft); color: var(--warn); }
+.tag.bad { background: var(--bad-soft); color: var(--bad); }
+.tag.wait { background: var(--band-a); color: var(--muted); }
+.kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 16px; font-size: 14px; }
+.kv div span { color: var(--muted); font-size: 12px; display: block; }
+.kv div b { font-family: var(--mono); font-weight: 600; }
+.peaks { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; }
+.peaks .track { height: 100px; }
+pre#log {
+	height: 340px; overflow: auto; margin: 0; padding: 10px; border-radius: 8px;
+	background: var(--bg); border: 1px solid var(--line); font: 13px/1.45 var(--mono); white-space: pre-wrap;
+}
+.cmdline { display: flex; gap: 8px; margin-top: 10px; }
+.cmdline input {
+	flex: 1; font: 14px var(--mono); padding: 7px 10px; border-radius: 8px;
+	border: 1px solid var(--line); background: var(--panel); color: var(--text);
+}
+textarea#report {
+	width: 100%; height: 160px; margin-top: 10px; font: 13px/1.45 var(--mono); padding: 10px;
+	border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text);
+}
+[hidden] { display: none !important; }
+@media (max-width: 640px) {
+	.faders { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.peaks { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+	main { padding: 16px 8px; }
+	th, td { padding: 6px 4px; }
+	td .tag { white-space: normal; }
+}
+</style>
+</head>
+<body>
+<header>
+	<h1>SP-1 Mixer Console</h1>
+	<span id="conn" class="pill">Not connected</span>
+	<span id="fw" class="pill" hidden></span>
+	<span class="spacer"></span>
+	<button id="btnConnect" class="primary">Connect SP-1</button>
+	<button id="btnAny" title="Use this if the SP-1 is not in the list">Other serial port</button>
+	<button id="btnDisconnect" disabled>Disconnect</button>
+</header>
+<nav>
+	<button data-tab="inputs" class="active">Buttons and faders</button>
+	<button data-tab="status">Status</button>
+	<button data-tab="term">Terminal</button>
+</nav>
+<main>
+	<div id="noSerial" class="notice" hidden>
+		This browser does not support Web Serial. Open this page in Chrome or Edge on a computer.
+	</div>
+
+	<div id="tab-inputs">
+		<section class="card">
+			<h2>Live readings</h2>
+			<p class="hint">Read every 0.1 s while connected. Highlighted buttons are what the firmware currently decodes.</p>
+			<div class="btns" id="btnPills"></div>
+			<div class="ladder">
+				<div class="row"><span>Button ladder 1 (PLAY and track buttons)</span><span id="l1text"><b>—</b></span></div>
+				<div class="scale" id="scale1"></div>
+			</div>
+			<div class="ladder">
+				<div class="row"><span>Button ladder 2 (volume, FWD, BACK)</span><span id="l2text"><b>—</b></span></div>
+				<div class="scale" id="scale2"></div>
+			</div>
+		</section>
+
+		<section class="card">
+			<h2>Faders</h2>
+			<p class="hint">Move each of the four faders to the top and to the bottom. The dashed lines mark the lowest and highest raw values seen since connecting. The firmware maps 60–3600 to the full range (measured: 0 at the bottom, about 3700–3820 at the top).</p>
+			<div class="faders" id="faders"></div>
+		</section>
+
+		<section class="card">
+			<h2>Button test</h2>
+			<p class="hint">Hold the button named in the highlighted row for about 1 second, then release it. The reading is recorded on release and the next row is selected. For combinations the order does not matter. Click any row to test it again. "Expected" is the firmware's band for that button; "Decoded as" is what the firmware's thresholds make of the reading.</p>
+			<table>
+				<thead><tr><th>Button</th><th>Expected</th><th>Measured</th><th>Decoded as</th><th>Result</th></tr></thead>
+				<tbody id="checks"></tbody>
+			</table>
+		</section>
+
+		<section class="card">
+			<h2>Test results</h2>
+			<p class="hint">After the test above, click "Generate and copy". To report a problem, attach the text to a GitHub issue.</p>
+			<div class="btns">
+				<button id="btnReport" class="primary">Generate and copy</button>
+				<button id="btnResetChecks">Start over</button>
+			</div>
+			<textarea id="report" readonly placeholder="Results appear here"></textarea>
+		</section>
+	</div>
+
+	<div id="tab-status" hidden>
+		<section class="card">
+			<h2>Device</h2>
+			<div class="kv" id="kvDevice"></div>
+		</section>
+		<section class="card">
+			<h2>Restarts</h2>
+			<p class="hint">After a device reset the page reconnects automatically and records the cause here.</p>
+			<table>
+				<thead><tr><th>Time</th><th>Reset cause</th><th>Watchdog / crash record</th></tr></thead>
+				<tbody id="boots"><tr><td colspan="3" class="hint">Shown after connecting</td></tr></tbody>
+			</table>
+		</section>
+		<section class="card">
+			<h2>Diagnostics log</h2>
+			<p class="hint">One line per second; the last 2 minutes are kept. When the device resets, the lines from before the reset are kept with the matching restart entry. Click "Copy diagnostics" and attach the text to a GitHub issue; no screenshot needed.</p>
+			<div class="btns"><button id="btnCopyDiag" class="primary">Copy diagnostics</button></div>
+			<table style="margin-top:10px">
+				<thead><tr><th>Time</th><th>Uptime</th><th>CPU busy</th><th>Top threads (%)</th><th>USB packets</th></tr></thead>
+				<tbody id="history"><tr><td colspan="5" class="hint">Shown after connecting</td></tr></tbody>
+			</table>
+		</section>
+		<section class="card">
+			<h2>Thread CPU use (%, last second)</h2>
+			<div class="kv" id="kvThreads"></div>
+		</section>
+		<section class="card">
+			<h2>USB</h2>
+			<div class="kv" id="kvUsb"></div>
+			<h2 style="margin-top:16px">Channel peaks (dBFS)</h2>
+			<div class="peaks" id="peaks"></div>
+		</section>
+		<section class="card" id="cardAudio" hidden>
+			<h2>Audio</h2>
+			<p id="audioHints" style="margin:0 0 8px;font-weight:600"></p>
+			<div class="kv" id="kvAudio"></div>
+		</section>
+		<section class="card">
+			<h2>Mix</h2>
+			<div class="kv" id="kvCtrl"></div>
+		</section>
+	</div>
+
+	<div id="tab-term" hidden>
+		<section class="card">
+			<h2>Terminal</h2>
+			<p class="hint">Type firmware commands directly, for example <code>help</code>, <code>status</code> or <code>scene save 1</code>.</p>
+			<pre id="log"></pre>
+			<form class="cmdline" id="cmdForm">
+				<input id="cmdInput" autocomplete="off" placeholder="Type a command and press Enter">
+				<button class="primary">Send</button>
+			</form>
+		</section>
+	</div>
+</main>
+
+<script>
+"use strict";
+
+/* Band tables: same values as src/core/buttons.c */
+const L1 = [
+	[0, 110, 0x000, "none"], [110, 308, 0x001, "Track 1"], [308, 488, 0x002, "Track 2"],
+	[488, 650, 0x003, "Track 1+2"], [650, 795, 0x004, "Track 3"], [795, 925, 0x005, "Track 1+3"],
+	[925, 1044, 0x006, "Track 2+3"], [1044, 1154, 0x007, "Track 1+2+3"], [1154, 1256, 0x008, "Track 4"],
+	[1256, 1347, 0x009, "Track 1+4"], [1347, 1430, 0x00a, "Track 2+4"], [1430, 1509, 0x00b, "Track 1+2+4"],
+	[1509, 1583, 0x00c, "Track 3+4"], [1583, 1650, 0x00d, "Track 1+3+4"], [1650, 1713, 0x00e, "Track 2+3+4"],
+	[1713, 1773, 0x00f, "Track 1+2+3+4"], [1773, 1840, 0x010, "PLAY"], [1840, 1886, 0x011, "PLAY+Track 1"],
+	[1886, 1957, 0x012, "PLAY+Track 2"], [1957, 2081, 0x014, "PLAY+Track 3"], [2081, 2267, 0x018, "PLAY+Track 4"],
+];
+const L2 = [
+	[0, 200, 0x000, "none"], [200, 560, 0x020, "BACK"], [560, 950, 0x040, "VOL −"],
+	[950, 1500, 0x080, "FWD"], [1500, 1910, 0x100, "VOL +"], [1910, 2200, 0x140, "VOL + and −"],
+];
+const L1_MAX = 2400, L2_MAX = 2300;
+const BTN_NAMES = [
+	[0x001, "Track 1"], [0x002, "Track 2"], [0x004, "Track 3"], [0x008, "Track 4"], [0x010, "PLAY"],
+	[0x020, "BACK"], [0x040, "VOL −"], [0x080, "FWD"], [0x100, "VOL +"], [0x200, "FUNCTION"],
+];
+
+/* Guided checks: ladder 1/2 by mask, or the FUNCTION GPIO */
+const CHECKS = [
+	{ name: "Track 1", ladder: 1, mask: 0x001 },
+	{ name: "Track 2", ladder: 1, mask: 0x002 },
+	{ name: "Track 3", ladder: 1, mask: 0x004 },
+	{ name: "Track 4", ladder: 1, mask: 0x008 },
+	{ name: "PLAY", ladder: 1, mask: 0x010 },
+	{ name: "Track 1 + Track 4 together", ladder: 1, mask: 0x009 },
+	{ name: "BACK", ladder: 2, mask: 0x020 },
+	{ name: "VOL −", ladder: 2, mask: 0x040 },
+	{ name: "FWD", ladder: 2, mask: 0x080 },
+	{ name: "VOL +", ladder: 2, mask: 0x100 },
+	{ name: "FUNCTION", fn: true },
+];
+
+const $ = (id) => document.getElementById(id);
+const decode = (table, raw) => table.find((b) => raw >= b[0] && raw < b[1]) || null;
+
+let port = null, reader = null, writer = null, connected = false;
+let lineBuf = "";
+let pending = null;		/* { prefix, lines, done, resolve, timer } */
+let pollTimer = null;
+let activeTab = "inputs";
+const newSeen = () => [0, 1, 2, 3].map(() => ({ min: Infinity, max: -Infinity }));
+let faderSeen = newSeen();
+let checkState = CHECKS.map(() => ({ samples: [], result: null }));
+let checkIdx = 0;
+let press = { cur: null, done: [] };
+let lastStatus = {};
+let lastStatusLines = [];	/* raw lines of the latest status, for the report */
+let lastAudio = null;		/* previous 'audio' fields, to see counters move */
+let autoReconnect = false;
+let lastUptime = null;
+const boots = [];
+const history = [];		/* one entry per status poll */
+let frozenBefore = null;	/* history right before the last disconnect */
+let cur = {};			/* fields of the status being parsed */
+let lastLoops = null;		/* { loops, t } of the previous status */
+
+const THREADS = ["another thread", "main (control loop)", "idle (CPU idle: the control loop got stuck waiting)",
+	"sysworkq (system work queue)", "usbd (USB stack)", "udc_nrfx (USB driver)",
+	"console (serial console)", "store (storage)", "audio"];
+const IRQS = { 0: "POWER_CLOCK", 3: "I2C", 6: "GPIOTE", 7: "SAADC", 10: "TIMER2", 11: "RTC0",
+	17: "RTC1", 28: "PWM0", 33: "PWM1", 37: "I2S", 39: "USBD" };
+
+const STAGES = ["none", "waiting for the next 2 ms tick (timer)", "reading the ADC (buttons and faders)", "headphone detection/levels",
+	"UI logic", "mix parameters/speaker", "LEDs", "console commands", "scene storage", "status/watchdog",
+	"fader settling at boot", "synchronous scene save", "standby", "power-off"];
+
+function culpritText(c) {
+	if (c === 0) return "none";
+	if (c === 0x41) return "audio thread stalled";
+	if (c === 0x49) return "ADC returned no button/fader readings for 1 s; reset once";
+	if (c === 0x4a) return "selftest: stopped feeding the watchdog on purpose";
+	if ((c & 0xe0) === 0x60) return `control loop stuck in "${STAGES[c & 0x0f] || c & 0x0f}"` +
+		((c & 0xf0) === 0x70 ? ", system timer stopped too" : "");
+	if (c >= 0xf0) return `crash (reason ${c & 0x0f})`;
+	if ((c & 0xf0) === 0x50) return `watchdog: ${THREADS[c & 0x0f] || "another thread"} kept the CPU busy`;
+	if (c & 0x80) return `watchdog: interrupt ${IRQS[c & 0x3f] || (c & 0x3f)} kept the CPU busy`;
+	return "0x" + c.toString(16);
+}
+
+function resetText(rr) {
+	const why = [];
+	if (rr & 0x1) why.push("reset pin");
+	if (rr & 0x2) why.push("watchdog");
+	if (rr & 0x4) why.push("soft reset");
+	if (rr & 0x8) why.push("CPU lockup");
+	if (rr & 0x10000) why.push("button wake-up");
+	if (rr & 0x100000) why.push("USB wake-up");
+	return why.length ? why.join(", ") : "power-on";
+}
+
+/* ---------- UI construction ---------- */
+
+function buildScale(el, table, max) {
+	el.innerHTML = "";
+	for (const b of table) {
+		const d = document.createElement("div");
+		d.className = "band";
+		d.style.left = (b[0] / max * 100) + "%";
+		d.style.width = ((b[1] - b[0]) / max * 100) + "%";
+		d.title = `${b[3]}: ${b[0]}–${b[1]}`;
+		el.appendChild(d);
+	}
+	const m = document.createElement("div");
+	m.className = "mark";
+	m.hidden = true;
+	el.appendChild(m);
+}
+
+function buildUi() {
+	$("btnPills").innerHTML = BTN_NAMES.map(([m, n]) => `<span data-mask="${m}">${n}</span>`).join("");
+	buildScale($("scale1"), L1, L1_MAX);
+	buildScale($("scale2"), L2, L2_MAX);
+	$("faders").innerHTML = [0, 1, 2, 3].map((i) => `
+		<div class="fader">
+			<div>Fader ${i + 1}</div>
+			<div class="track"><div class="fill" id="ff${i}" style="height:0"></div>
+				<div class="seen" id="fmax${i}" hidden></div><div class="seen" id="fmin${i}" hidden></div></div>
+			<div>raw <code id="fr${i}">—</code></div>
+			<div>pos <code id="fp${i}">—</code></div>
+			<div>seen <code id="fs${i}">—</code></div>
+		</div>`).join("");
+	$("peaks").innerHTML = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => `
+		<div class="fader"><div>Ch ${i + 1}</div>
+			<div class="track"><div class="fill" id="pk${i}" style="height:0"></div></div>
+			<code id="pt${i}">—</code></div>`).join("");
+	renderChecks();
+}
+
+function renderChecks() {
+	$("checks").innerHTML = CHECKS.map((c, i) => {
+		const st = checkState[i];
+		const r = st.result;
+		let expect = "—", meas = "—", seen = "—", tag = `<span class="tag wait">not tested</span>`;
+		if (c.fn) {
+			expect = "GPIO pressed = 1";
+		} else {
+			const t = c.ladder === 1 ? L1 : L2;
+			const b = t.find((x) => x[2] === c.mask);
+			expect = `${b[0]}–${b[1]}`;
+		}
+		if (r) {
+			meas = r.text;
+			seen = r.seen;
+			tag = `<span class="tag ${r.cls}">${r.label}</span>`;
+		}
+		const cur = i === checkIdx && connected ? " class=\"current\"" : "";
+		const prompt = i === checkIdx && connected && !r ? " (hold it now)" : "";
+		return `<tr${cur} data-i="${i}"><td>${c.name}${prompt}</td><td class="num">${expect}</td>` +
+			`<td class="num">${meas}</td><td>${seen}</td><td>${tag}</td></tr>`;
+	}).join("");
+}
+
+/* ---------- Serial ---------- */
+
+async function connect(filtered) {
+	if (!("serial" in navigator)) {
+		$("noSerial").hidden = false;
+		return;
+	}
+	let p;
+	try {
+		const opts = filtered ? { filters: [{ usbVendorId: 0x1209, usbProductId: 0x0001 }] } : {};
+		p = await navigator.serial.requestPort(opts);
+	} catch (e) {
+		return;	/* nothing chosen */
+	}
+	autoReconnect = true;
+	lastUptime = null;
+	await openPort(p);
+}
+
+async function openPort(p) {
+	try {
+		await p.open({ baudRate: 115200 });
+		/* The firmware only talks once the host raises DTR. */
+		await p.setSignals({ dataTerminalReady: true, requestToSend: true });
+	} catch (e) {
+		logLine(`! Could not open the serial port: ${e.message}`);
+		if (!autoReconnect) {
+			alert(`Connection failed: ${e.message}\n\nIf the port is busy, close other serial programs such as PuTTY first.`);
+		}
+		return;
+	}
+	port = p;
+	writer = port.writable.getWriter();
+	connected = true;
+	setConnUi();
+	readLoop();
+	setTimeout(async () => {
+		await refreshStatus();
+		schedulePoll(0);
+	}, 300);
+}
+
+async function onReappear(e) {
+	if (!autoReconnect || connected) return;
+	logLine("! Device is back, reconnecting");
+	/* Give the USB stack a moment to settle after enumeration */
+	setTimeout(() => { if (!connected) openPort(e.target); }, 500);
+}
+
+function onUnplug(e) {
+	if (e.target === port) {
+		frozenBefore = history.slice(-10);
+		history.push({ when: new Date().toLocaleTimeString(), note: "device disconnected" });
+		teardown(autoReconnect ? "Device disconnected (possibly restarting), waiting for it to return" : "Device unplugged");
+	}
+}
+
+async function disconnect() {
+	autoReconnect = false;
+	await teardown("Disconnected");
+}
+
+async function teardown(msg) {
+	connected = false;
+	clearTimeout(pollTimer);
+	if (pending) {
+		clearTimeout(pending.timer);
+		pending.resolve(null);
+		pending = null;
+	}
+	try { if (reader) await reader.cancel(); } catch (e) { /* closed already */ }
+	try { if (writer) writer.releaseLock(); } catch (e) { /* closed already */ }
+	try { if (port) await port.close(); } catch (e) { /* closed already */ }
+	reader = writer = port = null;
+	logLine(`! ${msg}`);
+	setConnUi();
+}
+
+function setConnUi() {
+	$("conn").textContent = connected ? "Connected" : "Not connected";
+	$("conn").classList.toggle("on", connected);
+	$("btnConnect").disabled = connected;
+	$("btnAny").disabled = connected;
+	$("btnDisconnect").disabled = !connected;
+	if (!connected) $("fw").hidden = true;
+	renderChecks();
+}
+
+async function readLoop() {
+	const decoder = new TextDecoder();
+	while (port && port.readable && connected) {
+		reader = port.readable.getReader();
+		try {
+			for (;;) {
+				const { value, done } = await reader.read();
+				if (done) break;
+				onData(decoder.decode(value, { stream: true }));
+			}
+		} catch (e) {
+			/* device gone or cancelled */
+		} finally {
+			reader.releaseLock();
+		}
+		if (!connected) break;
+	}
+}
+
+function onData(text) {
+	lineBuf += text;
+	let i;
+	while ((i = lineBuf.search(/\r?\n/)) >= 0) {
+		const line = lineBuf.slice(0, i).replace(/\r$/, "");
+		lineBuf = lineBuf.slice(lineBuf[i] === "\r" ? i + 2 : i + 1);
+		if (line.length) onLine(line);
+	}
+}
+
+function onLine(line) {
+	const quiet = line.startsWith("ladder1 ");
+	if (!quiet || activeTab === "term") logLine(line);
+
+	if (pending) {
+		pending.lines.push(line);
+		if (pending.done(line)) {
+			clearTimeout(pending.timer);
+			const p = pending;
+			pending = null;
+			p.resolve(p.lines);
+		}
+	}
+}
+
+async function send(cmd) {
+	if (!writer) return;
+	await writer.write(new TextEncoder().encode(cmd + "\r\n"));
+}
+
+/* One command at a time; resolves with its output lines or null. */
+function command(cmd, done, timeoutMs = 600) {
+	if (!connected || pending) return Promise.resolve(null);
+	return new Promise((resolve) => {
+		pending = { lines: [], done, resolve, timer: setTimeout(() => {
+			const p = pending;
+			pending = null;
+			/* Older firmware may not send the last expected line */
+			resolve(p && p.lines.length ? p.lines : null);
+		}, timeoutMs) };
+		send(cmd).catch(() => {});
+	});
+}
+
+/* ---------- Polling ---------- */
+
+function schedulePoll(delay) {
+	clearTimeout(pollTimer);
+	pollTimer = setTimeout(poll, delay);
+}
+
+async function poll() {
+	if (!connected) return;
+	if (activeTab === "inputs") {
+		const out = await command("adc", (l) => l.startsWith("ladder1 "), 500);
+		const line = out && out.find((l) => l.startsWith("ladder1 "));
+		if (line) onAdc(line);
+		schedulePoll(80);
+	} else if (activeTab === "status") {
+		await refreshStatus();
+		schedulePoll(1000);
+	} else {
+		schedulePoll(500);
+	}
+}
+
+async function refreshStatus() {
+	const out = await command("status", (l) => l.startsWith("threads "), 1200);
+	if (out) {
+		onStatus(out);
+		statusDone();
+	} else if (connected) {
+		addHistory({ when: new Date().toLocaleTimeString(), note: "no response from the device (CPU may be saturated)" });
+	}
+}
+
+function addHistory(h) {
+	history.push(h);
+	if (history.length > 120) history.shift();
+	renderHistory();
+}
+
+function historyText(h) {
+	if (h.note) return `${h.when} ${h.note}`;
+	return `${h.when} up ${h.up}s busy ${h.busy}% ${h.top} | loops ${h.loop ?? "?"}/s stage ${h.stage ?? "?"}` +
+		(h.cost ? ` cost µs ${h.cost}` : "") + (h.adcErr ? ` ADC errors ${h.adcErr}` : "") +
+		` | pkts ${h.pkts}${h.stream === "1" ? " streaming" : ""}` +
+		(h.audio ? ` | audio ${h.audio}` : "") + (h.hints ? ` ! ${h.hints}` : "");
+}
+
+function renderHistory() {
+	$("history").innerHTML = history.slice(-20).reverse().map((h) => h.note ?
+		`<tr><td>${h.when}</td><td colspan="4">${h.note}</td></tr>` :
+		`<tr><td>${h.when}</td><td class="num">${h.up}s</td><td class="num">${h.busy}%</td>` +
+		`<td class="num">${h.top}</td><td class="num">${h.pkts}${h.stream === "1" ? " ▶" : ""}</td></tr>`).join("");
+}
+
+/* ---------- adc ---------- */
+
+function parseAdc(line) {
+	const m = line.match(/^ladder1 (-?\d+) ladder2 (-?\d+) -> 0x([0-9a-f]+) fn (\d) faders raw (-?\d+) (-?\d+) (-?\d+) (-?\d+) pos (\d+) (\d+) (\d+) (\d+) battery (-?\d+) usb (\d)/);
+	if (!m) return null;
+	const n = m.slice(1).map((x, i) => i === 2 ? parseInt(x, 16) : parseInt(x, 10));
+	return {
+		l1: n[0], l2: n[1], mask: n[2], fn: n[3] === 1,
+		raw: n.slice(4, 8), pos: n.slice(8, 12), battery: n[12], usb: n[13] === 1,
+	};
+}
+
+function nameOfMask(mask, fn) {
+	const names = BTN_NAMES.filter(([m]) => m !== 0x200 && (mask & m)).map(([, n]) => n);
+	if (fn) names.push("FUNCTION");
+	return names.length ? names.join(" + ") : "none";
+}
+
+function showScale(el, table, max, raw) {
+	const bands = el.querySelectorAll(".band");
+	const b = decode(table, raw);
+	bands.forEach((d, i) => d.classList.toggle("cur", b === table[i] && raw > table[0][1]));
+	const mark = el.querySelector(".mark");
+	mark.hidden = false;
+	mark.style.left = Math.min(100, raw / max * 100) + "%";
+	return b;
+}
+
+function onAdc(line) {
+	const a = parseAdc(line);
+	if (!a) return;
+
+	document.querySelectorAll("#btnPills span").forEach((s) => {
+		const m = +s.dataset.mask;
+		s.classList.toggle("on", m === 0x200 ? a.fn : (a.mask & m) !== 0);
+	});
+
+	const b1 = showScale($("scale1"), L1, L1_MAX, a.l1);
+	const b2 = showScale($("scale2"), L2, L2_MAX, a.l2);
+	$("l1text").innerHTML = `<b>${a.l1}</b> · ${b1 ? b1[3] : "outside all bands"}`;
+	$("l2text").innerHTML = `<b>${a.l2}</b> · ${b2 ? b2[3] : "outside all bands"}`;
+
+	for (let i = 0; i < 4; i++) {
+		const s = faderSeen[i];
+		s.min = Math.min(s.min, a.raw[i]);
+		s.max = Math.max(s.max, a.raw[i]);
+		const mn = s.min, mx = s.max;
+		$("ff" + i).style.height = (a.pos[i] / 1023 * 100) + "%";
+		$("fr" + i).textContent = a.raw[i];
+		$("fp" + i).textContent = a.pos[i];
+		$("fs" + i).textContent = `${mn}–${mx}`;
+		const top = (v) => (100 - Math.min(100, Math.max(0, v / 3800 * 100))) + "%";
+		$("fmin" + i).hidden = $("fmax" + i).hidden = false;
+		$("fmin" + i).style.top = top(mn);
+		$("fmax" + i).style.top = top(mx);
+	}
+
+	runChecks(a);
+}
+
+/* ---------- guided checks ---------- */
+
+function runChecks(a) {
+	if (checkIdx >= CHECKS.length) return;
+	const c = CHECKS[checkIdx];
+	const now = performance.now();
+
+	if (c.fn) {
+		if (a.fn) {
+			finishCheck(checkIdx, { text: "1", seen: "FUNCTION", cls: "ok", label: "OK" });
+		}
+		return;
+	}
+
+	const raw = c.ladder === 1 ? a.l1 : a.l2;
+	const idle = c.ladder === 1 ? raw < 110 : raw < 200;
+
+	/*
+	 * A press is a series of plateaus (e.g. Track 1 alone, then Track 1 + 4).
+	 * Collect the ones held for at least 300 ms and, on release, keep the
+	 * highest: combinations always read higher than their single keys.
+	 */
+	const closePlateau = () => {
+		const p = press.cur;
+		if (p && p.values.length && now - p.since >= 300) press.done.push(p);
+		press.cur = null;
+	};
+
+	if (!idle) {
+		if (!press.cur || Math.abs(raw - press.cur.ref) > 20) {
+			closePlateau();
+			press.cur = { ref: raw, since: now, values: [] };
+		}
+		press.cur.values.push(raw);
+		return;
+	}
+
+	closePlateau();
+	const plateaus = press.done;
+	press.done = [];
+	if (!plateaus.length) return;
+
+	const avgOf = (v) => Math.round(v.reduce((x, y) => x + y, 0) / v.length);
+	const best = plateaus.reduce((x, y) => (avgOf(y.values) > avgOf(x.values) ? y : x));
+	const vals = best.values;
+	const mn = Math.min(...vals), mx = Math.max(...vals);
+	const avg = avgOf(vals);
+	const table = c.ladder === 1 ? L1 : L2;
+	const want = table.find((b) => b[2] === c.mask);
+	const inside = mn >= want[0] && mx < want[1];
+	const margin = Math.min(mn - want[0], want[1] - 1 - mx);
+	const got = decode(table, avg);
+	let cls = "ok", label = "OK";
+	if (!inside) { cls = "bad"; label = "out of range"; }
+	else if (margin < 25) { cls = "warn"; label = "near a threshold"; }
+	finishCheck(checkIdx, {
+		text: mn === mx ? `${avg}` : `${avg} (${mn}–${mx})`,
+		seen: got ? got[3] : "not recognised",
+		cls, label, avg, mn, mx,
+	});
+}
+
+function finishCheck(i, result) {
+	checkState[i].result = result;
+	/* Next untested item */
+	let next = CHECKS.length;
+	for (let k = 1; k <= CHECKS.length; k++) {
+		const j = (i + k) % CHECKS.length;
+		if (!checkState[j].result) { next = j; break; }
+	}
+	checkIdx = next;
+	renderChecks();
+}
+
+function buildReport() {
+	const L = [];
+	L.push(`SP-1 Mixer button test ${new Date().toLocaleString()}`);
+	if (lastStatus.fw) L.push(`Firmware: ${lastStatus.fw}`);
+	CHECKS.forEach((c, i) => {
+		const r = checkState[i].result;
+		if (c.fn) {
+			L.push(`FUNCTION: ${r ? "press detected" : "not tested"}`);
+			return;
+		}
+		const want = (c.ladder === 1 ? L1 : L2).find((b) => b[2] === c.mask);
+		L.push(`${c.name}: ${r ? `${r.text}, expected ${want[0]}–${want[1]}, decoded as ${r.seen}, ${r.label}` : "not tested"}`);
+	});
+	for (let i = 0; i < 4; i++) {
+		const s = faderSeen[i];
+		L.push(`Fader ${i + 1}: raw ${isFinite(s.min) ? s.min : "?"}–${isFinite(s.max) ? s.max : "?"}`);
+	}
+	boots.forEach((b) => L.push(`Restart ${b.when}: ${resetText(b.rr)}; ${b.crash || culpritText(b.culprit)}`));
+	return L.join("\n");
+}
+
+/* ---------- status ---------- */
+
+function kv(el, pairs) {
+	el.innerHTML = pairs.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
+}
+
+function tokens(line) {
+	const t = line.split(/\s+/);
+	const o = {};
+	for (let i = 1; i + 1 < t.length; i += 2) o[t[i]] = t[i + 1];
+	return o;
+}
+
+function onStatus(lines) {
+	cur = {};
+	lastStatusLines = lines.filter((l) => l.trim()).map((l) => l.trim());
+	for (const line of lines) {
+		if (line.startsWith("sp1mixer ")) {
+			const m = line.match(/^sp1mixer (\S+) up (\d+)s reset (0x[0-9a-f]+) fault (\S+)(?: reason (\d+) pc (0x[0-9a-f]+))? culprit (0x[0-9a-f]+)(?: kept (\S+))?(?: fw (\S+))?/);
+			if (m) {
+				const fwName = m[9] ? `${m[1]} ${m[9]}` : m[1];
+				lastStatus.fw = fwName;
+				$("fw").textContent = `Firmware ${fwName}`;
+				$("fw").hidden = false;
+				const up = parseInt(m[2], 10);
+				const rr = parseInt(m[3], 16);
+				const culprit = parseInt(m[7], 16);
+				const crash = m[4] === "yes" ? `crash (reason ${m[5]}, PC ${m[6]})` : "";
+				kv($("kvDevice"), [
+					["Firmware", fwName], ["Uptime", `${up} s`],
+					["Reset cause", resetText(rr)],
+					["Last crash", crash || "none"],
+					["Watchdog record", culpritText(culprit) + (culprit ? ` (0x${culprit.toString(16)}, kept in ${{ reg: "registers", ram: "RAM", "reg+ram": "registers and RAM" }[m[8]] || m[8]})` : "")],
+				]);
+				cur.up = up;
+				if (lastUptime === null || up < lastUptime) {
+					boots.unshift({ when: new Date().toLocaleTimeString(), up, rr, culprit, crash, kept: m[8],
+						before: lastUptime === null ? null : frozenBefore, stall: [] });
+					frozenBefore = null;
+					cur.newBoot = true;
+					lastLoops = null;
+					renderBoots();
+					logLine(`! This boot: ${resetText(rr)}; ${crash || culpritText(culprit)}`);
+				}
+				lastUptime = up;
+			}
+		} else if (line.startsWith("stall ")) {
+			/* The record repeats in every status of this boot: keep one copy */
+			if (cur.stallAttach === undefined) cur.stallAttach = boots.length > 0 && boots[0].stall.length === 0;
+			if (cur.stallAttach) {
+				boots[0].stall.push(line.trim());
+				renderBoots();
+			}
+		} else if (line.startsWith("main loops ")) {
+			const m = line.match(/^main loops (\d+) stage (\d+) tmr (\d+)/);
+			if (m) {
+				const loops = parseInt(m[1], 10), now = Date.now();
+				if (lastLoops && now > lastLoops.t) {
+					cur.loop = Math.round((loops - lastLoops.loops) * 1000 / (now - lastLoops.t));
+				}
+				lastLoops = { loops, t: now };
+				cur.stage = parseInt(m[2], 10);
+			}
+			const a = line.match(/ adc ok (\d+) nostart (\d+) timeout (\d+) short (\d+)/);
+			if (a) cur.adcErr = +a[2] + +a[3] + +a[4];
+		} else if (line.startsWith("main us ")) {
+			/* average/longest microseconds per loop for each stage */
+			const t = line.split(/\s+/).slice(2);
+			const st = [];
+			for (let i = 0; i + 1 < t.length; i += 2) {
+				const [avg, max] = t[i + 1].split("/").map(Number);
+				st.push({ n: t[i], avg, max });
+			}
+			cur.cost = st.filter((x) => x.n !== "wait").sort((x, y) => y.avg - x.avg).slice(0, 3)
+				.map((x) => `${x.n} ${x.avg}/${x.max}`).join(" ");
+		} else if (line.startsWith("usb ")) {
+			const o = tokens(line);
+			cur.pkts = o.pkts;
+			cur.stream = o.stream;
+			kv($("kvUsb"), [
+				["Configured", o.cfg === "1" ? "yes" : "no"], ["Suspended", o.susp === "1" ? "yes" : "no"],
+				["Host streaming", o.stream === "1" ? "yes" : "no"], ["Packets received", o.pkts],
+				["48-frame packets", o.n48], ["49-frame packets", o.n49], ["47-frame packets", o.n47], ["Other lengths", o.other],
+				["Zero-length packets", o.zlp], ["Partial frames", o.part], ["Missed frames", o.gaps],
+				["Handled one frame late (not lost)", o.late ?? "?"], ["Frame number jumps (host pause etc.)", o.jumps ?? "?"],
+				["No buffer", o.nobuf],
+				["Receive time avg/max µs", o.rx ?? "?"],
+			]);
+		} else if (line.startsWith("peak dBFS")) {
+			const v = line.split(/\s+/).slice(2).map(Number);
+			v.forEach((db, i) => {
+				$("pk" + i).style.height = Math.max(0, (db + 60) / 60 * 100) + "%";
+				$("pt" + i).textContent = db <= -99 ? "silent" : db;
+			});
+		} else if (line.startsWith("audio ")) {
+			$("cardAudio").hidden = false;
+			const t = line.split(/\s+/);
+			const o = tokens(line.replace(/^audio \S+/, "audio"));
+			cur.audioRows = [
+				["State", stateText(t[1])],
+				["Buffered frames", o.fill], ["Linearised fill", o.lin], ["Rate ppm", o.ppm],
+				["Feed-forward ppm", o.ff], ["Underruns", o.under], ["Overruns", o.over], ["Dropped frames", o.drop],
+				["I2S errors/stalls", o.i2s], ["SOF rejects", o.sofrej], ["Clipped samples", o.clip],
+				["Block time while playing avg/max", (o.blk || "") + " µs"],
+			];
+			renderAudio();
+			cur.audio = { state: t[1], i2s: o.i2s, under: o.under };
+		} else if (line.startsWith("audio2 ")) {
+			cur.audio2 = tokens(line);
+			renderAudio();
+		} else if (line.startsWith("audioerr ")) {
+			cur.audioErr = tokens(line);
+			renderAudio();
+		} else if (line.startsWith("codec ")) {
+			const m = line.match(/^codec cs42 (\S+) step (\d+) tries (\d+) osc 0x([0-9a-f]+) tas (\S+) step (\d+) spk (\d) jack (\??)0x([0-9a-f]+) i2cerr (\d+)/);
+			if (m) cur.codec = { cs42: m[1], cs42Step: +m[2], tries: +m[3], osc: parseInt(m[4], 16),
+				tas: m[5], tasStep: +m[6], spk: m[7], jackKnown: m[8] !== "?", jack: parseInt(m[9], 16),
+				i2cErr: +m[10] };
+		} else if (line.startsWith("threads ")) {
+			const t = line.split(/\s+/).slice(1);
+			const pairs = [];
+			for (let i = 0; i + 1 < t.length; i += 2) pairs.push([t[i], t[i + 1] + " %"]);
+			kv($("kvThreads"), pairs);
+			/* sleep: CPU halted in WFI (firmware reports it since the
+			 * shares became wall-clock based); idle: awake in the idle thread */
+			const idle = pairs.find(([n]) => n === "idle");
+			const sleep = pairs.find(([n]) => n === "sleep");
+			cur.busy = idle ? 100 - parseInt(idle[1], 10) - (sleep ? parseInt(sleep[1], 10) : 0) : "?";
+			cur.top = pairs.filter(([n]) => n !== "idle" && n !== "sleep")
+				.map(([n, v]) => [n, parseInt(v, 10)])
+				.sort((a, b) => b[1] - a[1]).slice(0, 4)
+				.map(([n, v]) => `${n} ${v}`).join(" ");
+		} else if (line.startsWith("ctrl ")) {
+			const t = line.split(/\s+/);
+			const at = (k, n) => t.slice(t.indexOf(k) + 1, t.indexOf(k) + 1 + n).join(" ");
+			kv($("kvCtrl"), [
+				["Volume (0–1023)", at("vol", 4)], ["Balance", at("bal", 4)],
+				["Mute", at("mute", 1)], ["Solo", at("solo", 1)], ["Master dB", at("master", 1)],
+				["Speaker", at("spk", 1)], ["Headphones in", { "1": "yes", "0": "no", "-": "(no audio output in this build)" }[at("hp", 1)] || "unknown"],
+				["Charging", at("chg", 1) === "1" ? "yes" : "no"], ["Saved scenes", at("slots", 1)],
+				["Write pending", at("dirty", 1) === "1" ? "yes" : "no"], ["Writes/errors", at("writes", 1)],
+			]);
+		}
+	}
+}
+
+/* Plain-language reading of the audio and codec lines */
+function stateText(s) {
+	return { idle: "idle", preroll: "buffering", run: "playing", fade: "fading out" }[s] || s;
+}
+
+/* The audio card: the 'audio' line, then what 'audio2'/'audioerr' add */
+function renderAudio() {
+	const rows = (cur.audioRows || []).slice();
+	const a2 = cur.audio2, e = cur.audioErr;
+	if (a2 && a2.prio) {
+		rows.push(["Audio thread", a2.prio === "coop" ? "above USB (coop)" : "below USB (preempt)"]);
+		rows.push(["Blocks over 1.33 ms", `${a2.slow} / ${a2.playing}`]);
+		rows.push(["Blocks started 1/2/3+ periods late", a2.late], ["Longest gap between blocks", `${a2.gapmax} µs (nominal 1333)`]);
+		rows.push(["SOF relabels", a2.sofrel]);
+	}
+	if (e) {
+		const what = { late: "block too late, output ran dry", stall: "no clock (LRCLK)", start: "I2S failed to start" }[e.kind] || e.kind;
+		rows.push(["Last I2S error", `${what}, at ${e.at} s uptime, ${stateText(e.state)}, ${e.fill} frames buffered, ` +
+			`${e.gap} µs since the previous block started, block took ${e.us} µs, error code ${e.code}`]);
+	}
+	kv($("kvAudio"), rows);
+}
+
+function audioHints() {
+	const h = [];
+	const c = cur.codec, a = cur.audio, a2 = cur.audio2;
+	/* audio_shutdown stops the thread, then powers the codecs down; set-up
+	 * attempts (tries) only happen once the thread is about to start
+	 */
+	const stopped = a2 && a2.run === "0" && c && c.tries > 0;
+	if (stopped) h.push("Audio stopped and codecs powered down (selftest or power-off in progress)");
+	else if (a2 && a2.run === "0") h.push(`Audio thread did not start (error ${a2.init})`);
+	if (stopped) {
+		/* nothing more to say */
+	} else if (c && c.tries === 0) {
+		h.push("Codecs not initialised yet");
+	} else if (c) {
+		if (c.cs42 === "none") h.push("Headphone codec CS42L42 does not answer (I2C)");
+		else if (c.cs42 !== "ok") h.push(`Headphone codec CS42L42 set-up failed at step ${c.cs42Step}`);
+		if (c.cs42 !== "none" && c.osc !== 2) {
+			h.push(`CS42L42 clock status 0x${c.osc.toString(16)} (expected 0x2${(c.osc & 3) === 2 ? "; switched to SCLK, but the internal RC oscillator is still on" : "; not switched to SCLK"})`);
+		}
+		if (c.tas !== "ok") h.push(`Speaker amplifier TAS2505 set-up failed at step ${c.tasStep}`);
+	}
+	if (a2 && a2.gapmax !== undefined && +a2.gapmax >= 4000) {
+		h.push(`Audio thread was delayed ${(+a2.gapmax / 1000).toFixed(1)} ms before the next block (audio drops out at about 5.3 ms)`);
+	}
+	if (a && lastAudio && a.i2s && lastAudio.i2s) {
+		const [e1, s1] = a.i2s.split("/").map(Number), [e0, s0] = lastAudio.i2s.split("/").map(Number);
+		if (s1 > s0) h.push("I2S stalls increasing: no LRCLK (the codec is not providing a clock)");
+		if (e1 > e0) h.push("I2S errors increasing (CPU too slow or clock problem)");
+		if (+a.under > +lastAudio.under && a.state === "run") h.push("Underrun while playing");
+	}
+	if (a) lastAudio = a;
+	return h;
+}
+
+function statusDone() {
+	if (cur.up !== undefined) {
+		const hints = audioHints();
+		if (cur.audio) $("audioHints").textContent = hints.length ? "! " + hints.join("; ") : "OK";
+		addHistory({ when: new Date().toLocaleTimeString(), up: cur.up, busy: cur.busy ?? "?",
+			top: cur.top ?? "", pkts: cur.pkts ?? "?", stream: cur.stream,
+			loop: cur.loop, stage: cur.stage, cost: cur.cost, adcErr: cur.adcErr,
+			audio: cur.audio ? `${cur.audio.state} i2s ${cur.audio.i2s} under ${cur.audio.under}` +
+				(cur.audio2 && cur.audio2.slow !== undefined ?
+					` slow ${cur.audio2.slow} gapmax ${cur.audio2.gapmax}µs ${cur.audio2.prio}` : "") : "",
+			hints: hints.join("; ") });
+	}
+}
+
+/* What the main thread was doing when the stall catcher fired */
+function keptText(b) {
+	return b.culprit && b.kept ? ` [kept in ${{ reg: "registers", ram: "RAM", "reg+ram": "registers and RAM" }[b.kept] || b.kept}]` : "";
+}
+
+function stallState(b) {
+	const l = (b.stall || []).find((x) => x.startsWith("stall src "));
+	const m = l && l.match(/ state 0x([0-9a-f]+) run (\d)/);
+	if (!m) return "";
+	const st = parseInt(m[1], 16);
+	if (st & 0x02) return " (main thread stuck waiting for a signal)";
+	if (st & 0x04) return " (main thread sleeping)";
+	if (st === 0) return " (main thread not waiting: another thread or an interrupt kept the CPU busy)";
+	return ` (main thread state 0x${m[1]})`;
+}
+
+function renderBoots() {
+	$("boots").innerHTML = boots.map((b) =>
+		`<tr><td>${b.when} (read at ${b.up} s uptime)</td><td>${resetText(b.rr)}</td>` +
+		`<td>${b.crash || culpritText(b.culprit) + stallState(b) + keptText(b)}` +
+		(b.stall && b.stall.length ? `<details open><summary>Stall snapshot (included in the copied diagnostics; attach them to a GitHub issue)</summary><pre style="margin:6px 0 0;font-size:12px;white-space:pre-wrap">${b.stall.join("\n")}</pre></details>` : "") +
+		(b.before && b.before.length ? `<details><summary>Log before the reset</summary><pre style="margin:6px 0 0;font-size:12px;white-space:pre-wrap">${b.before.map(historyText).join("\n")}</pre></details>` : "") +
+		`</td></tr>`).join("");
+}
+
+function diagText() {
+	const L = [`SP-1 Mixer diagnostics ${new Date().toLocaleString()}`];
+	if (lastStatus.fw) L.push(`Firmware: ${lastStatus.fw}`);
+	boots.slice().reverse().forEach((b) => {
+		L.push(`== Boot ${b.when}: ${resetText(b.rr)}; ${b.crash || culpritText(b.culprit) + stallState(b) + keptText(b)}`);
+		(b.stall || []).forEach((l) => L.push("   " + l));
+		if (b.before && b.before.length) {
+			L.push("   Before the reset:");
+			b.before.forEach((h) => L.push("   " + historyText(h)));
+		}
+	});
+	L.push("== Recent log:");
+	history.slice(-30).forEach((h) => L.push(historyText(h)));
+	if (lastStatusLines.length) {
+		L.push("== Latest status (raw):");
+		lastStatusLines.forEach((l) => L.push(l));
+	}
+	return L.join("\n");
+}
+
+/* ---------- terminal ---------- */
+
+function logLine(s) {
+	const log = $("log");
+	const atEnd = log.scrollTop + log.clientHeight >= log.scrollHeight - 4;
+	log.textContent += s + "\n";
+	if (log.textContent.length > 60000) log.textContent = log.textContent.slice(-40000);
+	if (atEnd) log.scrollTop = log.scrollHeight;
+}
+
+/* ---------- wiring ---------- */
+
+document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => {
+	activeTab = b.dataset.tab;
+	document.querySelectorAll("nav button").forEach((x) => x.classList.toggle("active", x === b));
+	["inputs", "status", "term"].forEach((t) => { $("tab-" + t).hidden = t !== activeTab; });
+	if (connected) schedulePoll(0);
+}));
+
+$("btnConnect").addEventListener("click", () => connect(true));
+$("btnAny").addEventListener("click", () => connect(false));
+$("btnDisconnect").addEventListener("click", disconnect);
+
+$("checks").addEventListener("click", (e) => {
+	const tr = e.target.closest("tr");
+	if (!tr) return;
+	const i = +tr.dataset.i;
+	checkState[i].result = null;
+	checkIdx = i;
+	press = { cur: null, done: [] };
+	renderChecks();
+});
+
+$("btnResetChecks").addEventListener("click", () => {
+	checkState = CHECKS.map(() => ({ samples: [], result: null }));
+	checkIdx = 0;
+	faderSeen = newSeen();
+	$("report").value = "";
+	renderChecks();
+});
+
+$("btnReport").addEventListener("click", async () => {
+	const text = buildReport();
+	$("report").value = text;
+	try {
+		await navigator.clipboard.writeText(text);
+		$("btnReport").textContent = "Copied";
+		setTimeout(() => { $("btnReport").textContent = "Generate and copy"; }, 1500);
+	} catch (e) {
+		$("report").select();
+	}
+});
+
+$("btnCopyDiag").addEventListener("click", async () => {
+	const text = diagText();
+	try {
+		await navigator.clipboard.writeText(text);
+		$("btnCopyDiag").textContent = "Copied";
+		setTimeout(() => { $("btnCopyDiag").textContent = "Copy diagnostics"; }, 1500);
+	} catch (e) {
+		logLine(text);
+		alert("The browser blocked clipboard access. The text was written to the Terminal tab; copy it from there.");
+	}
+});
+
+$("cmdForm").addEventListener("submit", async (e) => {
+	e.preventDefault();
+	const cmd = $("cmdInput").value.trim();
+	if (!cmd || !connected) return;
+	$("cmdInput").value = "";
+	logLine("> " + cmd);
+	/* Let a running poll finish first */
+	while (pending) await new Promise((r) => setTimeout(r, 20));
+	await send(cmd);
+});
+
+if ("serial" in navigator) {
+	navigator.serial.addEventListener("disconnect", onUnplug);
+	navigator.serial.addEventListener("connect", onReappear);
+} else {
+	$("noSerial").hidden = false;
+}
+buildUi();
+setConnUi();
+</script>
+</body>
+</html>

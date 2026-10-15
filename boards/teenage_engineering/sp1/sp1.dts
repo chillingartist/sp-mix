@@ -1,0 +1,234 @@
+/*
+ * SPDX-License-Identifier: MIT
+ *
+ * Teenage Engineering SP-1 (stem player), nRF52840.
+ *
+ * Hardware facts from timknapen/SP-1-dev (pins, I2S/I2C, bootloader rules).
+ * SAADC channel settings match the configuration under which the
+ * sp1-tape-looper project measured the button ladder levels.
+ */
+
+/dts-v1/;
+#include <nordic/nrf52840_qiaa.dtsi>
+#include <zephyr/dt-bindings/adc/adc.h>
+#include <zephyr/dt-bindings/adc/nrf-saadc.h>
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/pwm/pwm.h>
+#include "sp1-pinctrl.dtsi"
+
+/ {
+	model = "Teenage Engineering SP-1";
+	compatible = "teenage-engineering,sp1";
+
+	chosen {
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+	};
+
+	aliases {
+		watchdog0 = &wdt0;
+	};
+
+	/* 8 LEDs, all driven by the MCU. Index 0-3: track LEDs,
+	 * 4-7: playback LEDs.
+	 */
+	leds: pwmleds {
+		compatible = "pwm-leds";
+
+		led_t1: led_t1 { pwms = <&pwm0 0 PWM_USEC(500) PWM_POLARITY_NORMAL>; };
+		led_t2: led_t2 { pwms = <&pwm0 1 PWM_USEC(500) PWM_POLARITY_NORMAL>; };
+		led_t3: led_t3 { pwms = <&pwm0 2 PWM_USEC(500) PWM_POLARITY_NORMAL>; };
+		led_t4: led_t4 { pwms = <&pwm0 3 PWM_USEC(500) PWM_POLARITY_NORMAL>; };
+		led_p1: led_p1 { pwms = <&pwm1 0 PWM_USEC(500) PWM_POLARITY_NORMAL>; };
+		led_p2: led_p2 { pwms = <&pwm1 1 PWM_USEC(500) PWM_POLARITY_NORMAL>; };
+		led_p3: led_p3 { pwms = <&pwm1 2 PWM_USEC(500) PWM_POLARITY_NORMAL>; };
+		led_p4: led_p4 { pwms = <&pwm1 3 PWM_USEC(500) PWM_POLARITY_NORMAL>; };
+	};
+
+	zephyr_user: zephyr,user {
+		/* Index order is relied on by the firmware (sp1_adc_ch). */
+		io-channels = <&adc 0>, <&adc 1>, <&adc 2>, <&adc 3>,
+			      <&adc 4>, <&adc 5>, <&adc 6>;
+
+		/* FUNCTION button: the only button on a GPIO, low = pressed. */
+		fn-gpios = <&gpio0 27 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+		/* Supply for the button ladders and faders. */
+		btn-com-gpios = <&gpio1 10 GPIO_ACTIVE_HIGH>;
+		/* 3.072 MHz audio oscillator enable. */
+		osc-en-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
+		cs42-rst-gpios = <&gpio0 15 GPIO_ACTIVE_LOW>;
+		tas-rst-gpios = <&gpio0 9 GPIO_ACTIVE_LOW>;
+		/* BQ24232: /CE (low = charging on), /CHG, /PGOOD (open drain). */
+		chg-en-gpios = <&gpio0 21 GPIO_ACTIVE_LOW>;
+		chg-stat-gpios = <&gpio0 22 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+		pgood-gpios = <&gpio0 24 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+		/* eMMC is unused in v1: keep its I/O rail off and it in reset. */
+		emmc-vccq-gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
+		emmc-rst-gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
+		/* CYBT-353027 Bluetooth module, held in reset in v1. */
+		bt-rst-gpios = <&gpio0 10 GPIO_ACTIVE_LOW>;
+	};
+};
+
+&uicr {
+	/* P0.09 = TAS2505 reset, P0.10 = Bluetooth module reset. */
+	nfct-pins-as-gpios;
+};
+
+&gpiote {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&adc {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	/* 0: ladder 1 - PLAY + track buttons */
+	channel@0 {
+		reg = <0>;
+		zephyr,gain = "ADC_GAIN_1_6";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 20)>;
+		zephyr,input-positive = <NRF_SAADC_AIN0>;
+		zephyr,resolution = <12>;
+	};
+
+	/* 1: ladder 2 - volume up/down, forward/back */
+	channel@1 {
+		reg = <1>;
+		zephyr,gain = "ADC_GAIN_1_6";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 20)>;
+		zephyr,input-positive = <NRF_SAADC_AIN1>;
+		zephyr,resolution = <12>;
+	};
+
+	/* 2-5: faders 1-4 */
+	channel@2 {
+		reg = <2>;
+		zephyr,gain = "ADC_GAIN_1_6";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 20)>;
+		zephyr,input-positive = <NRF_SAADC_AIN3>;
+		zephyr,resolution = <12>;
+	};
+
+	channel@3 {
+		reg = <3>;
+		zephyr,gain = "ADC_GAIN_1_6";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 20)>;
+		zephyr,input-positive = <NRF_SAADC_AIN6>;
+		zephyr,resolution = <12>;
+	};
+
+	channel@4 {
+		reg = <4>;
+		zephyr,gain = "ADC_GAIN_1_6";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 20)>;
+		zephyr,input-positive = <NRF_SAADC_AIN2>;
+		zephyr,resolution = <12>;
+	};
+
+	channel@5 {
+		reg = <5>;
+		zephyr,gain = "ADC_GAIN_1_6";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 20)>;
+		zephyr,input-positive = <NRF_SAADC_AIN7>;
+		zephyr,resolution = <12>;
+	};
+
+	/* 6: battery voltage through a divider */
+	channel@6 {
+		reg = <6>;
+		zephyr,gain = "ADC_GAIN_1_6";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 20)>;
+		zephyr,input-positive = <NRF_SAADC_AIN4>;
+		zephyr,resolution = <12>;
+	};
+};
+
+/* CS42L42 at 0x48, TAS2505 at 0x18 */
+&i2c0 {
+	compatible = "nordic,nrf-twim";
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_FAST>;
+	pinctrl-0 = <&i2c0_default>;
+	pinctrl-1 = <&i2c0_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+&i2s0 {
+	status = "okay";
+	pinctrl-0 = <&i2s0_default>;
+	pinctrl-1 = <&i2s0_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+&pwm0 {
+	status = "okay";
+	pinctrl-0 = <&pwm0_default>;
+	pinctrl-1 = <&pwm0_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+&pwm1 {
+	status = "okay";
+	pinctrl-0 = <&pwm1_default>;
+	pinctrl-1 = <&pwm1_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+&wdt0 {
+	status = "okay";
+};
+
+zephyr_udc0: &usbd {
+	compatible = "nordic,nrf-usbd";
+	status = "okay";
+};
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		/* Stock SP-1 bootloader: never touched by this firmware. */
+		boot_partition: partition@0 {
+			label = "bootloader";
+			reg = <0x00000000 0x00020000>;
+			read-only;
+		};
+
+		slot0_partition: partition@20000 {
+			label = "image-0";
+			reg = <0x00020000 0x000d7000>;
+		};
+
+		storage_partition: partition@f7000 {
+			label = "storage";
+			reg = <0x000f7000 0x00008000>;
+		};
+
+		/* Last page is reserved by the bootloader. */
+		reserved_partition: partition@ff000 {
+			label = "bootloader-reserved";
+			reg = <0x000ff000 0x00001000>;
+			read-only;
+		};
+	};
+};

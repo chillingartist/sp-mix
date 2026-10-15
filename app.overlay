@@ -1,0 +1,62 @@
+/*
+ * SPDX-License-Identifier: MIT
+ *
+ * USB functions: UAC2 8-channel adaptive playback + CDC ACM console.
+ */
+
+#include <zephyr/dt-bindings/usb/audio.h>
+
+/ {
+	uac2_mixer: usb_audio2 {
+		compatible = "zephyr,uac2";
+		status = "okay";
+		full-speed;
+		audio-function = <AUDIO_FUNCTION_OTHER>;
+
+		uac_clock: clock {
+			compatible = "zephyr,uac2-clock-source";
+			clock-type = "internal-fixed";
+			frequency-control = "read-only";
+			sampling-frequencies = <48000>;
+		};
+
+		/* 8 channels in 7.1 order: track 1 = FL/FR, 2 = FC/LFE,
+		 * 3 = BL/BR, 4 = SL/SR.
+		 */
+		usb_in: usb_in {
+			compatible = "zephyr,uac2-input-terminal";
+			clock-source = <&uac_clock>;
+			terminal-type = <USB_TERMINAL_STREAMING>;
+			front-left;
+			front-right;
+			front-center;
+			low-frequency-effects;
+			back-left;
+			back-right;
+			side-left;
+			side-right;
+		};
+
+		mix_out: mix_out {
+			compatible = "zephyr,uac2-output-terminal";
+			data-source = <&usb_in>;
+			clock-source = <&uac_clock>;
+			terminal-type = <OUTPUT_TERMINAL_HEADPHONES>;
+		};
+
+		as_play: as_play {
+			compatible = "zephyr,uac2-audio-streaming";
+			linked-terminal = <&usb_in>;
+			subslot-size = <2>;
+			bit-resolution = <16>;
+			/* zephyr-patches/0002: adaptive, no feedback endpoint */
+			adaptive;
+		};
+	};
+};
+
+&zephyr_udc0 {
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};
