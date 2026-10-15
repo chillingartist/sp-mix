@@ -22,6 +22,14 @@ if [ "$variant" != "full" ]; then
 	args+=("-DEXTRA_CONF_FILE=$conf")
 fi
 
+# SP1M_STORAGE=low keeps the settings in their own region below 0xCE000 instead of
+# the default 0xF7000 (see boards/teenage_engineering/sp1/sp1-storage-low.overlay).
+case "${SP1M_STORAGE:-default}" in
+	default) ;;
+	low) args+=("-DEXTRA_DTC_OVERLAY_FILE=$here/boards/teenage_engineering/sp1/sp1-storage-low.overlay") ;;
+	*) echo "unknown SP1M_STORAGE ${SP1M_STORAGE} (default, low)" >&2; exit 1 ;;
+esac
+
 # Which commit the binary is (shown by 'status'); -dirty: uncommitted changes
 args+=("-DSP1M_GIT=$(git -C "$here" describe --always --dirty --abbrev=7 2>/dev/null || echo unknown)")
 

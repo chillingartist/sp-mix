@@ -212,6 +212,8 @@ The output is `build-<variant>/zephyr/zephyr.bin`, which you flash through the b
 
 The application is linked at 0x20000, above the bootloader. `boards/teenage_engineering/sp1/board.cmake` also sets up J-Link, pyOCD and nrfjprog runners, but only for units with SWD access.
 
+The settings (scenes and the last state) live in flash at 0xF7000-0xFEFFF by default. Other SP-1 firmware, feldd for one, keeps its own data at the same address, so if you switch a unit between them you may want the settings elsewhere: `SP1M_STORAGE=low scripts/build.sh full` puts them in their own 16 KiB at 0xCA000-0xCDFFF (see [`sp1-storage-low.overlay`](boards/teenage_engineering/sp1/sp1-storage-low.overlay)). The two layouts do not see each other's settings.
+
 If you change the firmware, never remove recovery path 1 and never stop feeding the watchdog. The SP-1 has no reset button. Keep a known-good `.bin`, and bring up new builds in milestone order as described in [docs/TESTING.md](docs/TESTING.md).
 
 ### Configuration
