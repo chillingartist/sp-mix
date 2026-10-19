@@ -123,6 +123,59 @@ void ui_set_master_db(struct ui *u, int db, uint32_t now_ms)
 	u->vol_show_until = now_ms + UI_VOL_SHOW_MS;
 }
 
+void ui_ext_volume(struct ui *u, int track, uint16_t vol, uint16_t fader,
+		   uint32_t now_ms)
+{
+	if (track < 0 || track >= SP1M_TRACKS) {
+		return;
+	}
+	vol = (uint16_t)sp1m_clampi(vol, 0, FADER_MAX);
+	if (vol != u->st.current.vol[track]) {
+		u->st.current.vol[track] = vol;
+		mark_dirty(u, now_ms, false);
+	}
+	if (!u->bal_active[track]) {
+		pickup_arm(&u->vol_pick[track], vol, fader);
+	}
+}
+
+void ui_ext_balance(struct ui *u, int track, int bal, uint32_t now_ms)
+{
+	if (track < 0 || track >= SP1M_TRACKS) {
+		return;
+	}
+	bal = sp1m_clampi(bal, -BALANCE_MAX, BALANCE_MAX);
+	if (bal != u->st.current.bal[track]) {
+		u->st.current.bal[track] = (int8_t)bal;
+		mark_dirty(u, now_ms, false);
+	}
+}
+
+static void ext_bit(struct ui *u, uint8_t *mask, int track, bool on,
+		    uint32_t now_ms)
+{
+	uint8_t bit;
+
+	if (track < 0 || track >= SP1M_TRACKS) {
+		return;
+	}
+	bit = (uint8_t)(1u << track);
+	if (((*mask & bit) != 0) != on) {
+		*mask ^= bit;
+		mark_dirty(u, now_ms, false);
+	}
+}
+
+void ui_ext_mute(struct ui *u, int track, bool on, uint32_t now_ms)
+{
+	ext_bit(u, &u->st.current.mute, track, on, now_ms);
+}
+
+void ui_ext_solo(struct ui *u, int track, bool on, uint32_t now_ms)
+{
+	ext_bit(u, &u->st.current.solo, track, on, now_ms);
+}
+
 void ui_set_spk_mode(struct ui *u, enum spk_mode mode, uint32_t now_ms)
 {
 	if (u->st.current.spk_mode != (uint8_t)mode) {

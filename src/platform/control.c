@@ -27,6 +27,9 @@
 #if defined(CONFIG_SP1M_USB)
 #include "usb.h"
 #endif
+#if defined(CONFIG_SP1M_MIDI)
+#include "midi_in.h"
+#endif
 
 #define FADER_ALPHA		0.25f
 #define DEBOUNCE_SAMPLES	2
@@ -468,6 +471,9 @@ FUNC_NORETURN void control_run(const struct persist *loaded)
 
 	ui_init(&ui, loaded, f0, k_uptime_get_32());
 	board_charger_enable(ui.st.charge_off == 0);
+#if defined(CONFIG_SP1M_MIDI)
+	midi_in_start(&ui, &in);
+#endif
 
 #if defined(CONFIG_SP1M_AUDIO_OUT)
 	hp_boot_vote();
@@ -504,6 +510,9 @@ FUNC_NORETURN void control_run(const struct persist *loaded)
 #endif
 
 		stall_stage(STALL_STAGE_UI);
+#if defined(CONFIG_SP1M_MIDI)
+		midi_in_poll();
+#endif
 		ui_tick(&ui, &in, &out);
 
 		stall_stage(STALL_STAGE_MIX);

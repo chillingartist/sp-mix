@@ -66,7 +66,7 @@ SOFTWARE.
 
 <https://github.com/bnjreece/feldd-sp1-firmware>
 
-Used for: the handling of the watchdog started by the bootloader, the power-up policy, and the TRS jack pins. Only the original feldd work by Benjamin Reece, which is MIT licensed, was consulted; none of the third-party components bundled with feldd are used here.
+Used for: the handling of the watchdog started by the bootloader, the power-up policy, and the TRS jack pins. With MIDI control (`CONFIG_SP1M_MIDI`), also copied, with changes: the USB-MIDI 1.0 class (`src/platform/usb_midi1.[ch]`), the USB-MIDI packet decoder (`src/core/midi/usb_rt_parse.[ch]` and its test) and the `midi_msg` struct (`src/core/midi/midi_msg.h`). Only the original feldd work by Benjamin Reece, which is MIT licensed, was consulted; none of the third-party components bundled with feldd are used here.
 
 ```
 MIT License, reproduced below, which covers ONLY

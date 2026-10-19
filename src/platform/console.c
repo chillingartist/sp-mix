@@ -27,6 +27,9 @@
 #include "safety.h"
 #include "stall.h"
 #include "usb.h"
+#if defined(CONFIG_SP1M_MIDI)
+#include "midi_in.h"
+#endif
 
 #if defined(CONFIG_SP1M_AUDIO_OUT)
 #include "audio.h"
@@ -453,6 +456,15 @@ static void print_status_lines(void)
 	     u.rx_calls ? (unsigned int)(u.rx_cycles / u.rx_calls / mhz) : 0u,
 	     u.rx_max / mhz);
 
+#if defined(CONFIG_SP1M_MIDI)
+	{
+		struct midi_in_stats m;
+
+		midi_in_get_stats(&m);
+		outf("midi pkts %u msgs %u applied %u dropped %u\r\n",
+		     m.packets, m.messages, m.applied, m.dropped);
+	}
+#endif
 	outf("peak dBFS");
 	for (int ch = 0; ch < SP1M_IN_CH; ch++) {
 		outf(" %d", peak_db(u.peak[ch]));

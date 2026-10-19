@@ -41,7 +41,11 @@ int test_checks;
 	X(test_ui_master_volume)		\
 	X(test_ui_volume_safety)		\
 	X(test_ui_persist)			\
-	X(test_cli)
+	X(test_cli)				\
+	X(test_midi_map_bindings)			\
+	X(test_midi_map_messages)			\
+	X(test_midi_map_curves)			\
+	X(test_midi_map_pickup)
 
 #define DECLARE(fn) void fn(void);
 TESTS(DECLARE)

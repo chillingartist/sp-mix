@@ -38,7 +38,9 @@ Not done yet:
 - **Browser console:** `tools/sp1-console.html` talks to the serial port from Chrome or Edge (Web Serial). It shows live button and fader readings, runs a per-button test, shows the status and reset history, and copies the diagnostics with one click.
 - **Power handling:** power off and on with FUNCTION, standby while on USB power, automatic power-off when no host is connected, and battery charging that can be switched on or off.
 
-Not included: MIDI, audio back to the host, the 3.5 mm analog input, Bluetooth and effects. Android is not a target platform.
+Optional, off by default: MIDI control over USB, receive only (see [docs/MIDI.md](docs/MIDI.md)).
+
+Not included: MIDI output, audio back to the host, the 3.5 mm analog input, Bluetooth and effects. Android is not a target platform.
 
 ## Disclaimer
 

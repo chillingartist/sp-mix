@@ -23,6 +23,7 @@ add_executable(sp1m_tests
   test_scene.c
   test_ui.c
   test_cli.c
+  test_midi_map.c
   ${CORE_SOURCES}
 )
 target_include_directories(sp1m_tests PRIVATE ${CORE} ${CMAKE_CURRENT_SOURCE_DIR})
@@ -41,6 +42,7 @@ add_library(sp1m_midi STATIC
 )
 target_include_directories(sp1m_midi PUBLIC ${MIDI})
 target_compile_options(sp1m_midi PRIVATE -Wall -Wextra)
+target_link_libraries(sp1m_tests PRIVATE sp1m_midi)
 
 # Probe compilation AND linking: a compiler can accept the flag while its
 # sanitizer runtime is unavailable. Keep the vendor tests usable in that case.

@@ -148,6 +148,17 @@ bool ui_scene_recall(struct ui *u, int slot, const uint16_t fader[SP1M_TRACKS],
 void ui_set_spk_mode(struct ui *u, enum spk_mode mode, uint32_t now_ms);
 /* Master volume in dB (MASTER_DB_OFF..MASTER_DB_MAX, clamped). */
 void ui_set_master_db(struct ui *u, int db, uint32_t now_ms);
+
+/*
+ * External control (MIDI): the same state the buttons and faders set, so it
+ * is saved, recalled and capped like theirs. A volume applies at once and
+ * the fader then waits to pick it up, as after a scene recall. Track 0..3.
+ */
+void ui_ext_volume(struct ui *u, int track, uint16_t vol, uint16_t fader,
+		   uint32_t now_ms);
+void ui_ext_balance(struct ui *u, int track, int bal, uint32_t now_ms);
+void ui_ext_mute(struct ui *u, int track, bool on, uint32_t now_ms);
+void ui_ext_solo(struct ui *u, int track, bool on, uint32_t now_ms);
 void ui_set_charge_off(struct ui *u, bool off, uint32_t now_ms);
 
 /* Something should be written to flash (when writing is allowed). */

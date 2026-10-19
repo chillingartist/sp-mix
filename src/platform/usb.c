@@ -20,6 +20,10 @@
 #include "stall.h"
 #include "usb.h"
 
+#if defined(CONFIG_SP1M_MIDI)
+#include "midi_in.h"
+#endif
+
 #if defined(CONFIG_SP1M_AUDIO_OUT)
 #include "audio.h"
 #endif
@@ -341,6 +345,9 @@ int usb_init(void)
 
 #if defined(CONFIG_SP1M_UAC2)
 	usbd_uac2_set_ops(DEVICE_DT_GET(UAC2_NODE), &uac2_ops, NULL);
+#endif
+#if defined(CONFIG_SP1M_MIDI)
+	midi_in_init();
 #endif
 
 	err = usbd_add_descriptor(&sp1m_usbd, &sp1m_lang);
