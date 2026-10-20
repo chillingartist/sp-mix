@@ -163,7 +163,7 @@ The original plan had the playback LEDs show the scene number in the scene layer
 ## 7. Scenes and persistence
 
 - Scene contents: volume, mute, solo and balance of the 4 tracks, master volume, speaker mode (16 bytes per scene). The last state, the four scene slots, the LED mode and the charging setting are stored together as one 89-byte record with a magic number, a version number and a CRC-16; a record that fails these checks is ignored and the defaults are used.
-- Storage: NVS at 0xF7000–0xFEFFF (8 pages). Whether the bootloader erases this area when new firmware is flashed has not been verified; if it does, the settings return to their defaults.
+- Storage: NVS at 0xF7000–0xFEFFF (8 pages) by default. That is also where other SP-1 firmware keeps its own NVS log (feldd's profiles), so the build can place it in its own 16 KB at 0xCA000–0xCDFFF instead (`SP1M_STORAGE=low`, `boards/teenage_engineering/sp1/sp1-storage-low.overlay`; the image then has 0x20000–0xC9FFF). The settings record has its own NVS id, so the two can share the default region, but they share one log (free space, garbage collection) and `store_init()` starts over when a mount fails. Whether the bootloader erases this area when new firmware is flashed has not been verified; if it does, the settings return to their defaults.
 - **No flash writes during playback**: a scene save is first kept in RAM (the LEDs confirm it), and the "last state" is marked dirty once the parameters have been unchanged for 5 s. The actual write happens only when the stream stops (Alt 0), when USB is not configured, in standby, or before power-off. Zephyr's partial erase is enabled as an extra safeguard.
 
 ## 8. Threads, power, safety and recovery

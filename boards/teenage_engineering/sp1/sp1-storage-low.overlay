@@ -1,0 +1,39 @@
+/* SPDX-License-Identifier: MIT */
+
+/*
+ * Optional flash layout: keep the settings in their own 16 KiB just below the
+ * 0xCE000 mark instead of at 0xF7000.
+ *
+ * Why: the default location, 0xF7000-0xFEFFF (labelled "storage"), is the same
+ * place other SP-1 firmware keeps its own NVS log (feldd's profiles, for one).
+ * The two can share it, because the settings record here has its own id, but
+ * they then share one log: its free space, its garbage collection, and the
+ * "start over" in store_init() when a mount fails, which would erase the other
+ * firmware's data. With this overlay the settings sit in a region of their
+ * own, 0xCA000-0xCDFFF, and the image gets 0x20000-0xC9FFF (680 KiB; the
+ * largest build is a small fraction of that).
+ *
+ * The default layout is unchanged. Use this one with
+ *
+ *   SP1M_STORAGE=low scripts/build.sh full
+ *
+ * or by hand: -DEXTRA_DTC_OVERLAY_FILE=boards/teenage_engineering/sp1/sp1-storage-low.overlay
+ *
+ * Settings saved with one layout are not seen by the other, so switching a unit
+ * between them starts from the defaults.
+ */
+
+/delete-node/ &storage_partition;
+
+&slot0_partition {
+	reg = <0x00020000 0x000aa000>;
+};
+
+&flash0 {
+	partitions {
+		storage_partition: partition@ca000 {
+			label = "storage";
+			reg = <0x000ca000 0x00004000>;
+		};
+	};
+};
