@@ -1,10 +1,12 @@
-# SP-1 Mixer
+# SP-Mix
 
-SP-1 Mixer is unofficial firmware for the teenage engineering SP-1 (nRF52840) that turns it into a class-compliant USB Audio Class 2 mixer with 8 inputs and 2 outputs. A host (Windows or iPad) plays four stereo tracks to the SP-1 over USB, and the SP-1's faders and buttons mix them live to stereo for the headphone jack (CS42L42) or, with no headphones plugged in, the built-in speaker (TAS2505, mono (L+R)/2). The host needs no driver. The firmware is built on Zephyr v4.3.1 with two small patches to Zephyr's USB stack.
+SP-Mix is unofficial firmware for the teenage engineering SP-1 (nRF52840) that turns it into a class-compliant USB Audio Class 2 mixer with 8 inputs and 2 outputs. A host (Windows or iPad) plays four stereo tracks to the SP-1 over USB, and the SP-1's faders and buttons mix them live to stereo for the headphone jack (CS42L42) or, with no headphones plugged in, the built-in speaker (TAS2505, mono (L+R)/2). The host needs no driver. The firmware is built on Zephyr v4.3.1 with two small patches to Zephyr's USB stack.
 
 ## What's new
 
-**2026-10-20, since v0.1.0 (not in a release yet): optional settings location.** By default the settings (scenes and the last state) are stored in flash at 0xF7000–0xFEFFF. feldd keeps its profiles at the same address. If you switch an SP-1 between SP-1 Mixer and other firmware, build with `SP1M_STORAGE=low scripts/build.sh full`. The settings then go in their own 16 KiB at 0xCA000–0xCDFFF, and neither firmware touches the other's data. Tested on hardware: a saved scene survived a reboot, and feldd's profiles were byte-identical after switching back to feldd. The default layout and the prebuilt `sp1mixer-full.bin` are unchanged. The two layouts do not see each other's settings, so switching layouts starts from the defaults. See [Build](#build) and [CHANGELOG.md](CHANGELOG.md). Thanks to [@ryanmgilmore](https://github.com/ryanmgilmore) ([#2](https://github.com/chillingartist/sp-mix/pull/2)).
+**2026-10-20: the project is now called SP-Mix.** From the next release the SP-1 shows up on the host as "SP-Mix", the release files are `sp-mix-<variant>.bin`, and the first line of `status` starts with `sp-mix`. v0.1.0 still uses the old name, SP-1 Mixer (`sp1mixer-full.bin`); the console page reads both. Windows may keep showing the old device name until the device is uninstalled in Device Manager. To build from source, clone into the default `sp-mix` directory.
+
+**2026-10-20, since v0.1.0 (not in a release yet): optional settings location.** By default the settings (scenes and the last state) are stored in flash at 0xF7000–0xFEFFF. feldd keeps its profiles at the same address. If you switch an SP-1 between SP-Mix and other firmware, build with `SP1M_STORAGE=low scripts/build.sh full`. The settings then go in their own 16 KiB at 0xCA000–0xCDFFF, and neither firmware touches the other's data. Tested on hardware: a saved scene survived a reboot, and feldd's profiles were byte-identical after switching back to feldd. The default layout and the prebuilt `.bin` files are unchanged. The two layouts do not see each other's settings, so switching layouts starts from the defaults. See [Build](#build) and [CHANGELOG.md](CHANGELOG.md). Thanks to [@ryanmgilmore](https://github.com/ryanmgilmore) ([#2](https://github.com/chillingartist/sp-mix/pull/2)).
 
 ## Status
 
@@ -16,7 +18,7 @@ Verified on hardware:
 - **USB (M1):** Windows and iPad enumerate the SP-1 as an 8-channel playback device. Per-channel levels match the channel test file; all packets carry 48 frames and none are missing.
 - **Audio output (M2):** both codecs come up, the speaker plays (L+R)/2, and plugging in headphones switches the speaker off and caps the master volume at −20 dB. Faders, mute, solo, balance, scenes and LED meters have been tested.
 - **Timing:** in about 12 minutes of playback on Windows, including one stop and restart: 0 I2S errors, 0 underruns, an average of 495 µs and a maximum of 761 µs of processing per 1333 µs audio block, at most 1.63 ms between blocks, audio thread 38 % CPU, 63 % in total. The full build also works on an iPad.
-- **Storage across updates:** flashing new firmware through the bootloader leaves the settings area alone. On 2026-10-19, feldd's data at 0xF7000–0xFEFFF, where SP-1 Mixer keeps its settings by default, was byte-identical after flashing SP-1 Mixer and then feldd again. A scene saved with the `SP1M_STORAGE=low` layout survived a reboot ([#2](https://github.com/chillingartist/sp-mix/pull/2)). An update from one SP-1 Mixer version to another has not been checked directly.
+- **Storage across updates:** flashing new firmware through the bootloader leaves the settings area alone. On 2026-10-19, feldd's data at 0xF7000–0xFEFFF, where SP-Mix keeps its settings by default, was byte-identical after flashing SP-Mix and then feldd again. A scene saved with the `SP1M_STORAGE=low` layout survived a reboot ([#2](https://github.com/chillingartist/sp-mix/pull/2)). An update from one SP-Mix version to another has not been checked directly.
 
 Not done yet:
 
@@ -55,9 +57,9 @@ Not included: MIDI, audio back to the host, the 3.5 mm analog input, Bluetooth a
 
 ### Install the firmware
 
-1. Download `sp1mixer-full.bin` from the [Releases](https://github.com/chillingartist/sp-mix/releases) page.
+1. Download `sp-mix-full.bin` from the [Releases](https://github.com/chillingartist/sp-mix/releases) page (in v0.1.0 the file is called `sp1mixer-full.bin`).
 2. Put the SP-1 into its bootloader by holding **Track 1 + Track 4** while you plug in the USB cable. Keep holding until the updater sees the device. This is a feature of the SP-1's bootloader and works with any firmware installed.
-3. Write `sp1mixer-full.bin` with the [Solderless web updater](https://solderless.engineering), a web tool that flashes the SP-1 through its bootloader, and follow its instructions.
+3. Write the `.bin` file with the [Solderless web updater](https://solderless.engineering), a web tool that flashes the SP-1 through its bootloader, and follow its instructions.
 4. The SP-1 restarts into the mixer. The LEDs light up briefly, then the track LEDs stay dimly lit. The host now sees a USB audio device with 8 output channels and a serial port.
 
 ### Recovery and updates
@@ -66,7 +68,7 @@ There are three ways to get into the bootloader, for example to install an updat
 
 | Path | How | Notes |
 | --- | --- | --- |
-| 1 | Hold **Track 1 + Track 4** for 3 s while SP-1 Mixer runs | The track LEDs fill up. Keep holding until the updater sees the SP-1. Works in every mode. |
+| 1 | Hold **Track 1 + Track 4** for 3 s while SP-Mix runs | The track LEDs fill up. Keep holding until the updater sees the SP-1. Works in every mode. |
 | 2 | Hold **Track 1 + Track 4** while plugging in USB | Built into the bootloader, so it works whatever firmware is installed, including a broken one. |
 | 3 | Type `dfu` in the [serial console](#serial-console) | No buttons needed. If the updater does not see the SP-1 afterwards, use path 2. |
 
@@ -161,7 +163,7 @@ Each `status` line has a prefix:
 
 | Line | Contents |
 | --- | --- |
-| `sp1mixer` | Build variant, uptime, reset reason register, last fault (reason, PC), reset cause recorded by the firmware (`culprit`) and where it survived (`kept`), and the firmware commit (`fw`) |
+| `sp-mix` | Build variant, uptime, reset reason register, last fault (reason, PC), reset cause recorded by the firmware (`culprit`) and where it survived (`kept`), and the firmware commit (`fw`) |
 | `stall` | Only after a stall reset: the control-loop stage, wait object, backtrace and peripheral registers |
 | `usb` | Configured, suspended and streaming state. Packet counts by frames per packet (`n47`/`n48`/`n49`), partial packets, USB frames without a packet while streaming (`gaps`), packets handled a frame late (`late`), frame-number jumps, packets without a free buffer (`nobuf`) and receive time per packet. |
 | `peak dBFS` | Input peak per channel since the previous status |
@@ -187,11 +189,11 @@ The repository is itself the west manifest ([`west.yml`](west.yml)). It pulls Ze
 
 ```sh
 mkdir sp1ws && cd sp1ws
-git clone https://github.com/chillingartist/sp-mix sp1mixer   # the directory must be named sp1mixer
-west init -l sp1mixer
+git clone https://github.com/chillingartist/sp-mix
+west init -l sp-mix
 west update --narrow -o=--depth=1
 pip install -r zephyr/scripts/requirements.txt   # Zephyr's Python packages, if not installed yet
-sp1mixer/scripts/apply-zephyr-patches.sh
+sp-mix/scripts/apply-zephyr-patches.sh
 ```
 
 ### Zephyr patches
@@ -206,13 +208,13 @@ sp1mixer/scripts/apply-zephyr-patches.sh
 ### Build
 
 ```sh
-cd sp1ws/sp1mixer
+cd sp1ws/sp-mix
 scripts/build.sh m0      # safety base: watchdog, recovery, power, LEDs, buttons, console
 scripts/build.sh m1      # + 8-channel USB audio, received and counted but not played
 scripts/build.sh full    # complete mixer (the default)
 ```
 
-The output is `build-<variant>/zephyr/zephyr.bin`, which you flash through the bootloader as [above](#install-the-firmware). The release file `sp1mixer-full.bin` is the `full` build. Arguments after the variant name go to `west build`. The build embeds the commit (`git describe --always --dirty`), which `status` shows as `fw`.
+The output is `build-<variant>/zephyr/zephyr.bin`, which you flash through the bootloader as [above](#install-the-firmware). The release file `sp-mix-full.bin` is the `full` build. Arguments after the variant name go to `west build`. The build embeds the commit (`git describe --always --dirty`), which `status` shows as `fw`.
 
 The application is linked at 0x20000, above the bootloader. `boards/teenage_engineering/sp1/board.cmake` also sets up J-Link, pyOCD and nrfjprog runners, but only for units with SWD access.
 
@@ -272,7 +274,7 @@ The tests cover the ring buffer, the mixer (balance law, mute/solo, DC blocker, 
 
 - `tools/sp1-console.html`: Web Serial console for Chrome and Edge (see [Serial console](#serial-console)).
 - `tools/channel-test.py [out.wav] [seconds] [sample rate]`: writes an 8-channel 7.1 WAV (default `sp1-channel-test.wav`, 10 s) with a 1 kHz tone on every channel, channel N at −3·N dBFS. With the host volume at 100 %, `status` should read −3, −6, ... −24 in `peak dBFS`.
-- `tools/mixer-test.py [out.wav] [seconds] [sample rate]`: writes an 8-channel WAV (default `sp1-mixer-test.wav`, 30 s) in which each track plays its own note and rhythm at −14 dBFS peak. Track 1 plays C4 once a second, Track 2 plays E4 twice a second, Track 3 plays long G4 notes, and Track 4 plays fast C5 ticks. The pattern repeats every 3 s, so it loops cleanly. With it, fader, mute, solo and balance changes are easy to hear.
+- `tools/mixer-test.py [out.wav] [seconds] [sample rate]`: writes an 8-channel WAV (default `sp-mix-test.wav`, 30 s) in which each track plays its own note and rhythm at −14 dBFS peak. Track 1 plays C4 once a second, Track 2 plays E4 twice a second, Track 3 plays long G4 notes, and Track 4 plays fast C5 ticks. The pattern repeats every 3 s, so it loops cleanly. With it, fader, mute, solo and balance changes are easy to hear.
 
 Both generators use only the Python 3 standard library.
 

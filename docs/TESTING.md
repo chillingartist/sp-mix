@@ -1,8 +1,8 @@
-# SP-1 Mixer — Hardware bring-up and testing
+# SP-Mix — Hardware bring-up and testing
 
 This guide takes an SP-1 through the three firmware build variants in order: `m0` (safety base), `m1` (USB probe) and `full` (the mixer). Each stage starts by making sure you can get back to the bootloader. It also explains the diagnostics the firmware reports and how to report results. The design behind the firmware is described in [DESIGN.md](DESIGN.md).
 
-> **Read this first.** SP-1 Mixer is unofficial firmware. It is not affiliated with or endorsed by teenage engineering; SP-1 is a trademark of teenage engineering. Flashing third-party firmware is at your own risk: keep a firmware image that you know works on your SP-1, and learn the recovery paths in section 2 before you flash anything. Protect your hearing: the firmware limits the master volume at power-up and when headphones are plugged in, but start with the volume low anyway, and keep headphones off your ears until the headphone checks in M2 have passed.
+> **Read this first.** SP-Mix is unofficial firmware. It is not affiliated with or endorsed by teenage engineering; SP-1 is a trademark of teenage engineering. Flashing third-party firmware is at your own risk: keep a firmware image that you know works on your SP-1, and learn the recovery paths in section 2 before you flash anything. Protect your hearing: the firmware limits the master volume at power-up and when headphones are plugged in, but start with the volume low anyway, and keep headphones off your ears until the headphone checks in M2 have passed.
 
 ## 1. Preparation
 
@@ -29,7 +29,7 @@ This guide takes an SP-1 through the three firmware build variants in order: `m0
 - Work through the stages in order, and keep the last binary that worked at every stage.
 - When a step does not give the expected result, stop there, copy the diagnostics (section 9) and report it (section 10). Do not carry on to the next step.
 - Copy the diagnostics at the checkpoints even when everything looks fine. CPU headroom, clock tracking and I2C error counts cannot be seen or heard; they are only in the record, and normal values are the baseline for later comparisons.
-- The first line of `status` names the build: `sp1mixer <variant> ... fw <hash>`. Check that it is the build you just flashed. `<hash>` is the `git describe` of the source tree; a `-dirty` suffix means the tree had uncommitted changes.
+- The first line of `status` names the build: `sp-mix <variant> ... fw <hash>` (`sp1mixer` in v0.1.0). Check that it is the build you just flashed. `<hash>` is the `git describe` of the source tree; a `-dirty` suffix means the tree had uncommitted changes.
 
 ## 2. Recovery paths (learn these first)
 
@@ -91,7 +91,7 @@ Both generators write a 16-bit WAVE_FORMAT_EXTENSIBLE file with channel mask 0x6
 
 ```sh
 python3 tools/channel-test.py [out.wav] [seconds] [sample rate]   # default sp1-channel-test.wav, 10 s, 48000 Hz
-python3 tools/mixer-test.py   [out.wav] [seconds] [sample rate]   # default sp1-mixer-test.wav, 30 s, 48000 Hz
+python3 tools/mixer-test.py   [out.wav] [seconds] [sample rate]   # default sp-mix-test.wav, 30 s, 48000 Hz
 ```
 
 **`channel-test.py`** (routing and levels): every channel plays a 1 kHz tone at the same time, channel N at −3·N dBFS (channel 1 at −3 dB … channel 8 at −24 dB). With the host volume at 100%, the `peak dBFS` line of `status` should read `-3 -6 -9 -12 -15 -18 -21 -24`. Channel 4 is the LFE position: if the host low-passed it, it would read far below −12. A low sample rate keeps long files small (the host resamples to 48 kHz and the 1 kHz peaks stay the same), e.g. `python3 tools/channel-test.py long.wav 1800 8000` for 30 minutes (about 230 MB); looping a short file in the player works too.
@@ -130,7 +130,7 @@ The `m0` build contains the watchdog, the recovery paths, power handling, LEDs, 
 
 The `m1` build adds the adaptive 8-channel UAC2 interface. Received audio is counted (packet sizes, gaps, per-channel peaks) but not played: there is no sound in this stage.
 
-1. **Enumeration**: Windows and the iPad each see an 8-channel playback device named "SP-1 Mixer", plus a serial port.
+1. **Enumeration**: Windows and the iPad each see an 8-channel playback device named "SP-Mix" ("SP-1 Mixer" in v0.1.0), plus a serial port.
 2. **Routing and levels**: play the `channel-test.py` file with the host volume at 100%. Expected: `peak dBFS -3 -6 -9 -12 -15 -18 -21 -24`, in this order. If only channels 1–2 show a level, see the Windows note in section 4. If channel 4 reads far below −12, the host is filtering the LFE channel; report it.
 3. **Packet counters**: in the `usb` line, `stream 1` while playing; `n48` keeps growing (Windows sends 48-frame packets); `part`, `gaps` and `nobuf` stay at 0. `late` (packets handled one USB frame late) is not a loss, and `jumps` counts large steps such as host pauses.
 4. **30-minute run**: `clear`, then play continuously for 30 minutes with `watch on` in a terminal or with the console page's status tab open; do not let the computer sleep. Expected: `n48` keeps growing, `gaps`, `part` and `nobuf` stay at 0, and there is no new reset entry.
@@ -143,17 +143,17 @@ The `m1` build adds the adaptive 8-channel UAC2 interface. Received audio is cou
 
 Copy the diagnostics record at the four checkpoints below (records A–D) and paste each into a text file. If a step goes wrong, stop and copy the record at that moment.
 
-**Prepare**: the `full` binary; the console page; `sp1-mixer-test.wav` from `tools/mixer-test.py` set to loop in the player; a working `m1` binary to fall back to. Do the iPad after everything below has passed on Windows.
+**Prepare**: the `full` binary; the console page; `sp-mix-test.wav` from `tools/mixer-test.py` set to loop in the player; a working `m1` binary to fall back to. Do the iPad after everything below has passed on Windows.
 
 0. **Before flashing (still on `m1`)**: pull all four faders to the bottom and wait 10 s (the last state is saved once nothing has changed for 5 s); unplug the headphones; set the Windows volume to 10%. Hold Track 1 + Track 4 for 3 s to enter the bootloader and flash `full`.
 1. **Start-up check**: the SP-1 restarts after flashing. Open the console page, connect, go to the status tab and wait 5 s.
-   - `sp1mixer full ... culprit 0x00 ... fw <hash>`.
+   - `sp-mix full ... culprit 0x00 ... fw <hash>`.
    - `audio idle`; the page shows no warning for the audio state, and there is no `audioerr` line.
    - `ctrl ... master -20` or `-24` (never above −20), `spk auto/1`, `hp 0`.
    - In the terminal, `codec` replies `codec cs42 ok step 0 tries 1 osc 0x02 tas ok ... i2cerr 0`, and the value after `jack` is below `0x80`. `tries 2` also works; note it in your report.
    - Copy the diagnostics: **record A**. Stop if the audio did not start (`audio2 run 0`, or `init` not 0), if `cs42` or `tas` is not `ok`, if `osc` is not `0x02`, or if the I2S stall count (second number of `i2s`) keeps growing, which means there is no LRCLK.
 2. **Stall record self-test**: type `selftest stall`. The SP-1 mutes and restarts by itself after a second or two; the page reconnects (if it does not, connect again). The reset history gains an entry stuck in console commands: `culprit 0x67`, `stall src ... stage 7`. Copy the diagnostics: **record B**.
-3. **Speaker**: if a track LED blinks slowly, that fader is waiting to take over a stored volume; push it to the top and back to the bottom. Then start `sp1-mixer-test.wav` on repeat. With all faders at the bottom there should be no sound.
+3. **Speaker**: if a track LED blinks slowly, that fader is waiting to take over a stored volume; push it to the top and back to the bottom. Then start `sp-mix-test.wav` on repeat. With all faders at the bottom there should be no sound.
    - `audio run`, and all 8 `peak dBFS` values around −14. If only channels 1 and 2 show a level, stop playback and start it again (see the Windows note in section 4).
    - Push faders 1–4 to the middle one after the other: low C, E, G and high C join in one by one and form a chord.
    - Set the Windows volume to 100% and adjust the level with VOL+/− (1 dB per press, hold to repeat; the playback LEDs show the master volume while you press).
@@ -209,7 +209,7 @@ Expected:
 `status` prints the following lines. The `audio`, `audio2` and `codec` lines exist only in the `full` build; the `stall` lines appear only when the previous reset was caused by the stall catcher; `audioerr` appears only after an I2S error.
 
 ```
-sp1mixer <variant> up <s>s reset 0x<resetreas> fault none|yes [reason <n> pc 0x<addr>] culprit 0x<code> [kept reg|ram|reg+ram] fw <hash>
+sp-mix <variant> up <s>s reset 0x<resetreas> fault none|yes [reason <n> pc 0x<addr>] culprit 0x<code> [kept reg|ram|reg+ram] fw <hash>
 stall src sof|timer stage <n> up <ms> loops <n> state 0x<bits> run <0|1> wait 0x<addr> to <ms> tmr <n> pc 0x<addr> lr 0x<addr>
 stall bt 0x<addr> ... (8 addresses)
 stall hw saadc 0x<..> inten 0x<..> iser 0x<..> 0x<..> ispr 0x<..> 0x<..> rtc <n> cc0 <n> inten 0x<..> ppi 0x<..>
@@ -231,7 +231,7 @@ The USB and audio counters run from boot or from the last `clear` (or `audio coo
 
 | Field | Meaning |
 | --- | --- |
-| `sp1mixer <variant>` | Build variant: `m0`, `m1` or `full` |
+| `sp-mix <variant>` | Build variant: `m0`, `m1` or `full` |
 | `up` | Seconds since boot. If it goes down between readings, the SP-1 has reset |
 | `reset` | RESETREAS of this boot: 0x1 reset pin, 0x2 watchdog, 0x4 soft reset, 0x8 CPU lockup, 0x10000 woken from power-off (FUNCTION), 0x100000 woken by USB power; 0 is a power-on reset |
 | `fault` | `yes` if the previous run ended in a fatal error; `reason` and `pc` say which and where |
@@ -359,7 +359,7 @@ The record is repeated in every `status` until the next reset; the console page 
 
 1. On the console page's status tab, copy the diagnostics record. It is plain text: paste it as text, not as a screenshot.
 2. Open an issue in this project's GitHub repository and attach the copied diagnostics. Include:
-   - the build (`sp1mixer <variant> ... fw <hash>`, and whether you changed any configuration),
+   - the build (`sp-mix <variant> ... fw <hash>`, and whether you changed any configuration),
    - the host (Windows version or iPadOS version, the player or app, and for Windows shared, exclusive or ASIO mode),
    - the stage and step from this guide, what you expected and what happened,
    - for a stage run with several checkpoints (records A–D in M2), all records in one issue.

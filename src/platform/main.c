@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  *
- * SP-1 Mixer: boot policy and bring-up. The main thread then becomes the
+ * SP-Mix: boot policy and bring-up. The main thread then becomes the
  * control loop.
  */
 

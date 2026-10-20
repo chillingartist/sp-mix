@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Write an 8-channel 7.1 test WAV for checking the SP-1 Mixer controls.
+"""Write an 8-channel 7.1 test WAV for checking the SP-Mix controls.
 
 Each track (channels 2N-1 and 2N) plays its own note in its own rhythm,
 the same on left and right, so a faded, muted, soloed or panned track is
@@ -44,7 +44,7 @@ def envelope(t, period, length):
 
 
 def main():
-    out = sys.argv[1] if len(sys.argv) > 1 else "sp1-mixer-test.wav"
+    out = sys.argv[1] if len(sys.argv) > 1 else "sp-mix-test.wav"
     seconds = float(sys.argv[2]) if len(sys.argv) > 2 else 30.0
     rate = int(sys.argv[3]) if len(sys.argv) > 3 else DEFAULT_RATE
     seconds = max(3.0, round(seconds / 3.0) * 3.0)  # whole loops

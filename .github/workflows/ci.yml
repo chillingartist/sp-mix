@@ -70,7 +70,7 @@ jobs:
       - name: Check out
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
-          path: sp1mixer
+          path: sp-mix
           persist-credentials: false
           # Tags too: 'status' shows git describe of the build (e.g. v0.1.0)
           fetch-depth: 0
@@ -79,25 +79,25 @@ jobs:
         run: |
           # The workspace is owned by another UID than the container user
           git config --global --add safe.directory '*'
-          west init -l sp1mixer
+          west init -l sp-mix
           west update --narrow -o=--depth=1
           # HOME differs from the image's user, so the SDK's CMake package
           # registration is not found: point at the SDK directly.
           echo "ZEPHYR_SDK_INSTALL_DIR=/opt/toolchains/zephyr-sdk-${ZSDK_VERSION}" >> "$GITHUB_ENV"
 
       - name: Apply Zephyr patches
-        run: sp1mixer/scripts/apply-zephyr-patches.sh
+        run: sp-mix/scripts/apply-zephyr-patches.sh
 
       - name: Build ${{ matrix.variant }}
-        run: sp1mixer/scripts/build.sh ${{ matrix.variant }}
+        run: sp-mix/scripts/build.sh ${{ matrix.variant }}
 
       - name: Upload firmware
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: sp1mixer-${{ matrix.variant }}
+          name: sp-mix-${{ matrix.variant }}
           path: |
-            sp1mixer/build-${{ matrix.variant }}/zephyr/zephyr.bin
-            sp1mixer/build-${{ matrix.variant }}/zephyr/zephyr.elf
+            sp-mix/build-${{ matrix.variant }}/zephyr/zephyr.bin
+            sp-mix/build-${{ matrix.variant }}/zephyr/zephyr.elf
           if-no-files-found: error
 
   release:
@@ -115,7 +115,7 @@ jobs:
       - name: Download firmware
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          pattern: sp1mixer-*
+          pattern: sp-mix-*
           path: artifacts
 
       - name: Create draft release
@@ -125,8 +125,8 @@ jobs:
         run: |
           mkdir dist
           for v in m0 m1 full; do
-            cp "artifacts/sp1mixer-$v/zephyr.bin" "dist/sp1mixer-$v.bin"
-            cp "artifacts/sp1mixer-$v/zephyr.elf" "dist/sp1mixer-$v.elf"
+            cp "artifacts/sp-mix-$v/zephyr.bin" "dist/sp-mix-$v.bin"
+            cp "artifacts/sp-mix-$v/zephyr.elf" "dist/sp-mix-$v.elf"
           done
           # Notes: this version's section of CHANGELOG.md
           ver="${TAG#v}"
@@ -142,4 +142,4 @@ jobs:
           esac
           gh release create "$TAG" dist/* --draft --target "$GITHUB_SHA" \
             --repo "$GITHUB_REPOSITORY" \
-            --title "SP-1 Mixer $TAG" --notes-file notes.md
+            --title "SP-Mix $TAG" --notes-file notes.md

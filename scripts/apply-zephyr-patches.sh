@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 #
-# Apply the SP-1 Mixer patches to the Zephyr tree of this west workspace.
+# Apply the SP-Mix patches to the Zephyr tree of this west workspace.
 # Safe to run repeatedly: patches that are already applied are skipped.
 set -euo pipefail
 

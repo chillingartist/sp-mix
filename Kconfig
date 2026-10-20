@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: MIT
 
-mainmenu "SP-1 Mixer"
+mainmenu "SP-Mix"
 
-menu "SP-1 Mixer"
+menu "SP-Mix"
 
 config SP1M_VARIANT
 	string "Build variant name"

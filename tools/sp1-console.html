@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SP-1 Mixer Console</title>
+<title>SP-Mix Console</title>
 <style>
 :root {
 	--bg: #f6f6f4;
@@ -144,7 +144,7 @@ textarea#report {
 </head>
 <body>
 <header>
-	<h1>SP-1 Mixer Console</h1>
+	<h1>SP-Mix Console</h1>
 	<span id="conn" class="pill">Not connected</span>
 	<span id="fw" class="pill" hidden></span>
 	<span class="spacer"></span>
@@ -757,7 +757,7 @@ function finishCheck(i, result) {
 
 function buildReport() {
 	const L = [];
-	L.push(`SP-1 Mixer button test ${new Date().toLocaleString()}`);
+	L.push(`SP-Mix button test ${new Date().toLocaleString()}`);
 	if (lastStatus.fw) L.push(`Firmware: ${lastStatus.fw}`);
 	CHECKS.forEach((c, i) => {
 		const r = checkState[i].result;
@@ -793,8 +793,9 @@ function onStatus(lines) {
 	cur = {};
 	lastStatusLines = lines.filter((l) => l.trim()).map((l) => l.trim());
 	for (const line of lines) {
-		if (line.startsWith("sp1mixer ")) {
-			const m = line.match(/^sp1mixer (\S+) up (\d+)s reset (0x[0-9a-f]+) fault (\S+)(?: reason (\d+) pc (0x[0-9a-f]+))? culprit (0x[0-9a-f]+)(?: kept (\S+))?(?: fw (\S+))?/);
+		// "sp1mixer" is what v0.1.0 prints
+		if (/^(sp-mix|sp1mixer) /.test(line)) {
+			const m = line.match(/^(?:sp-mix|sp1mixer) (\S+) up (\d+)s reset (0x[0-9a-f]+) fault (\S+)(?: reason (\d+) pc (0x[0-9a-f]+))? culprit (0x[0-9a-f]+)(?: kept (\S+))?(?: fw (\S+))?/);
 			if (m) {
 				const fwName = m[9] ? `${m[1]} ${m[9]}` : m[1];
 				lastStatus.fw = fwName;
@@ -1019,7 +1020,7 @@ function renderBoots() {
 }
 
 function diagText() {
-	const L = [`SP-1 Mixer diagnostics ${new Date().toLocaleString()}`];
+	const L = [`SP-Mix diagnostics ${new Date().toLocaleString()}`];
 	if (lastStatus.fw) L.push(`Firmware: ${lastStatus.fw}`);
 	boots.slice().reverse().forEach((b) => {
 		L.push(`== Boot ${b.when}: ${resetText(b.rr)}; ${b.crash || culpritText(b.culprit) + stallState(b) + keptText(b)}`);

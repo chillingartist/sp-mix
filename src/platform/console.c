@@ -428,7 +428,7 @@ static void print_status_lines(void)
 	control_get_status(&c);
 	usb_get_stats(&u);
 
-	outf("sp1mixer %s up %us reset 0x%08x fault %s",
+	outf("sp-mix %s up %us reset 0x%08x fault %s",
 	     CONFIG_SP1M_VARIANT, k_uptime_get_32() / 1000u,
 	     safety_reset_reason(), f.valid ? "yes" : "none");
 	if (f.valid) {

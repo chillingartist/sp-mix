@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Write an 8-channel 7.1 test WAV for checking the SP-1 Mixer routing.
+"""Write an 8-channel 7.1 test WAV for checking the SP-Mix routing.
 
 Every channel plays a 1 kHz tone at the same time, channel N at -3*N dBFS
 (channel 1 -3 dB ... channel 8 -24 dB). With the host volume at 100 %, the

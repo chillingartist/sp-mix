@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - `SP1M_STORAGE=low scripts/build.sh` (and `boards/teenage_engineering/sp1/sp1-storage-low.overlay`): an optional flash layout that keeps the settings in their own 16 KiB at 0xCA000-0xCDFFF instead of the default 0xF7000-0xFEFFF, which other SP-1 firmware also uses. The default layout is unchanged.
 
+### Changed
+
+- The project is now called SP-Mix (was SP-1 Mixer). The USB product name is "SP-Mix", the release files are `sp-mix-<variant>.bin` (was `sp1mixer-<variant>.bin`), the first line of `status` starts with `sp-mix` (the console page still reads the old `sp1mixer`), the test file is `sp-mix-test.wav`, and the west workspace directory is `sp-mix`, the default name of a clone.
+
 ## [0.1.0] - 2026-10-15
 
 First public release. The prebuilt firmware is `sp1mixer-full.bin`, which is the `full` build.

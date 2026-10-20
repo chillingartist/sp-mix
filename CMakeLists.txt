@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.20.0)
 list(APPEND BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(sp1mixer)
+project(sp-mix)
 
 file(GLOB core_sources src/core/*.c)
 target_sources(app PRIVATE ${core_sources})

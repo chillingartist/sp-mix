@@ -1,6 +1,6 @@
 # Third-party notices
 
-SP-1 Mixer is written from scratch, but it builds on hardware knowledge, measured values and register sequences published by the projects below. Where this project uses material from them (pin assignments, initialization sequences, measured thresholds, power-handling approaches), their copyright and permission notices are reproduced here as their licenses require. Thanks to their authors.
+SP-Mix is written from scratch, but it builds on hardware knowledge, measured values and register sequences published by the projects below. Where this project uses material from them (pin assignments, initialization sequences, measured thresholds, power-handling approaches), their copyright and permission notices are reproduced here as their licenses require. Thanks to their authors.
 
 ## SP-1-dev, by Tim Knapen
 

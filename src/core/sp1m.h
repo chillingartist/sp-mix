@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  *
- * Shared constants of the SP-1 Mixer firmware. Everything under src/core is
+ * Shared constants of the SP-Mix firmware. Everything under src/core is
  * plain C without Zephyr dependencies so it can be unit tested on a host.
  */
 

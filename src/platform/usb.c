@@ -33,10 +33,10 @@ USBD_DEVICE_DEFINE(sp1m_usbd, DEVICE_DT_GET(DT_NODELABEL(zephyr_udc0)),
 		   CONFIG_SP1M_USB_VID, CONFIG_SP1M_USB_PID);
 
 USBD_DESC_LANG_DEFINE(sp1m_lang);
-USBD_DESC_MANUFACTURER_DEFINE(sp1m_mfr, "sp1mixer");
-USBD_DESC_PRODUCT_DEFINE(sp1m_product, "SP-1 Mixer");
+USBD_DESC_MANUFACTURER_DEFINE(sp1m_mfr, "sp-mix");
+USBD_DESC_PRODUCT_DEFINE(sp1m_product, "SP-Mix");
 USBD_DESC_SERIAL_NUMBER_DEFINE(sp1m_sn);
-USBD_DESC_CONFIG_DEFINE(sp1m_cfg_desc, "SP-1 Mixer");
+USBD_DESC_CONFIG_DEFINE(sp1m_cfg_desc, "SP-Mix");
 
 /* Bus powered: the battery is charged from VBUS */
 USBD_CONFIGURATION_DEFINE(sp1m_config, 0, MAX_POWER_2MA, &sp1m_cfg_desc);
