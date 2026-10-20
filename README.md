@@ -2,6 +2,10 @@
 
 SP-1 Mixer is unofficial firmware for the teenage engineering SP-1 (nRF52840) that turns it into a class-compliant USB Audio Class 2 mixer with 8 inputs and 2 outputs. A host (Windows or iPad) plays four stereo tracks to the SP-1 over USB, and the SP-1's faders and buttons mix them live to stereo for the headphone jack (CS42L42) or, with no headphones plugged in, the built-in speaker (TAS2505, mono (L+R)/2). The host needs no driver. The firmware is built on Zephyr v4.3.1 with two small patches to Zephyr's USB stack.
 
+## What's new
+
+**2026-10-20, since v0.1.0 (not in a release yet): optional settings location.** By default the settings (scenes and the last state) are stored in flash at 0xF7000–0xFEFFF. feldd keeps its profiles at the same address. If you switch an SP-1 between SP-Mix and other firmware, build with `SP1M_STORAGE=low scripts/build.sh full`. The settings then go in their own 16 KiB at 0xCA000–0xCDFFF, and neither firmware touches the other's data. Tested on hardware: a saved scene survived a reboot, and feldd's profiles were byte-identical after switching back to feldd. The default layout and the prebuilt `sp1mixer-full.bin` are unchanged. The two layouts do not see each other's settings, so switching layouts starts from the defaults. See [Build](#build) and [CHANGELOG.md](CHANGELOG.md). Thanks to [@ryanmgilmore](https://github.com/ryanmgilmore) ([#2](https://github.com/chillingartist/sp-mix/pull/2)).
+
 ## Status
 
 Version 0.1.0 is the first public release (see [CHANGELOG.md](CHANGELOG.md)). The firmware runs on the SP-1 with Windows and iPad hosts, but long-run testing is not finished.
