@@ -163,7 +163,7 @@ The original plan had the playback LEDs show the scene number in the scene layer
 ## 7. Scenes and persistence
 
 - Scene contents: volume, mute, solo and balance of the 4 tracks, master volume, speaker mode (16 bytes per scene). The last state, the four scene slots, the LED mode and the charging setting are stored together as one 89-byte record with a magic number, a version number and a CRC-16; a record that fails these checks is ignored and the defaults are used.
-- Storage: NVS at 0xF7000–0xFEFFF (8 pages) by default. That is also where other SP-1 firmware keeps its own NVS log (feldd's profiles), so the build can place it in its own 16 KB at 0xCA000–0xCDFFF instead (`SP1M_STORAGE=low`, `boards/teenage_engineering/sp1/sp1-storage-low.overlay`; the image then has 0x20000–0xC9FFF). The settings record has its own NVS id, so the two can share the default region, but they share one log (free space, garbage collection) and `store_init()` starts over when a mount fails. Whether the bootloader erases this area when new firmware is flashed has not been verified; if it does, the settings return to their defaults.
+- Storage: NVS at 0xF7000–0xFEFFF (8 pages) by default. That is also where other SP-1 firmware keeps its own NVS log (feldd's profiles), so the build can place it in its own 16 KB at 0xCA000–0xCDFFF instead (`SP1M_STORAGE=low`, `boards/teenage_engineering/sp1/sp1-storage-low.overlay`; the image then has 0x20000–0xC9FFF). The settings record has its own NVS id, so the two can share the default region, but they share one log (free space, garbage collection) and `store_init()` starts over when a mount fails. Flashing new firmware through the bootloader does not erase this area: on 2026-10-19, feldd's NVS data at 0xF7000–0xFEFFF was byte-identical after flashing SP-1 Mixer (low layout) and then feldd again (PR #2). An update from one SP-1 Mixer version to another has not been checked directly.
 - **No flash writes during playback**: a scene save is first kept in RAM (the LEDs confirm it), and the "last state" is marked dirty once the parameters have been unchanged for 5 s. The actual write happens only when the stream stops (Alt 0), when USB is not configured, in standby, or before power-off. Zephyr's partial erase is enabled as an extra safeguard.
 
 ## 8. Threads, power, safety and recovery
@@ -320,8 +320,8 @@ The code implements this design. The three build variants (`m0`, `m1`, `full`) b
 
 - The 30-minute runs of the M1 and M2 gates
 - The 8-hour soak of M5, and repeated plugging and power cycling
-- Scene retention across power-off (NVS) is untested (M4 gate)
-- Whether NVS survives reflashing is unknown
+- Scene retention across power-off (NVS) is untested (M4 gate); a saved scene survives a reboot
+- Keeping the settings across an update from one SP-1 Mixer version to another has not been checked directly (reflashing leaves the 0xF7000 region intact, section 7)
 - The real output latency has not been measured
 - No results have been recorded yet for the quiescent current after power-off (M0 gate), for zipper noise on fast fader moves and per-channel routing in AUM and Reaper (M3 gate), or for clicks when saving during playback (M4 gate)
 - How the iPad's volume control acts on the device has not been checked (section 4)

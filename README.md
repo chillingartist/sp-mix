@@ -4,7 +4,7 @@ SP-1 Mixer is unofficial firmware for the teenage engineering SP-1 (nRF52840) th
 
 ## What's new
 
-**2026-10-20, since v0.1.0 (not in a release yet): optional settings location.** By default the settings (scenes and the last state) are stored in flash at 0xF7000–0xFEFFF. feldd keeps its profiles at the same address. If you switch an SP-1 between SP-Mix and other firmware, build with `SP1M_STORAGE=low scripts/build.sh full`. The settings then go in their own 16 KiB at 0xCA000–0xCDFFF, and neither firmware touches the other's data. Tested on hardware: a saved scene survived a reboot, and feldd's profiles were byte-identical after switching back to feldd. The default layout and the prebuilt `sp1mixer-full.bin` are unchanged. The two layouts do not see each other's settings, so switching layouts starts from the defaults. See [Build](#build) and [CHANGELOG.md](CHANGELOG.md). Thanks to [@ryanmgilmore](https://github.com/ryanmgilmore) ([#2](https://github.com/chillingartist/sp-mix/pull/2)).
+**2026-10-20, since v0.1.0 (not in a release yet): optional settings location.** By default the settings (scenes and the last state) are stored in flash at 0xF7000–0xFEFFF. feldd keeps its profiles at the same address. If you switch an SP-1 between SP-1 Mixer and other firmware, build with `SP1M_STORAGE=low scripts/build.sh full`. The settings then go in their own 16 KiB at 0xCA000–0xCDFFF, and neither firmware touches the other's data. Tested on hardware: a saved scene survived a reboot, and feldd's profiles were byte-identical after switching back to feldd. The default layout and the prebuilt `sp1mixer-full.bin` are unchanged. The two layouts do not see each other's settings, so switching layouts starts from the defaults. See [Build](#build) and [CHANGELOG.md](CHANGELOG.md). Thanks to [@ryanmgilmore](https://github.com/ryanmgilmore) ([#2](https://github.com/chillingartist/sp-mix/pull/2)).
 
 ## Status
 
@@ -16,12 +16,12 @@ Verified on hardware:
 - **USB (M1):** Windows and iPad enumerate the SP-1 as an 8-channel playback device. Per-channel levels match the channel test file; all packets carry 48 frames and none are missing.
 - **Audio output (M2):** both codecs come up, the speaker plays (L+R)/2, and plugging in headphones switches the speaker off and caps the master volume at −20 dB. Faders, mute, solo, balance, scenes and LED meters have been tested.
 - **Timing:** in about 12 minutes of playback on Windows, including one stop and restart: 0 I2S errors, 0 underruns, an average of 495 µs and a maximum of 761 µs of processing per 1333 µs audio block, at most 1.63 ms between blocks, audio thread 38 % CPU, 63 % in total. The full build also works on an iPad.
+- **Storage across updates:** flashing new firmware through the bootloader leaves the settings area alone. On 2026-10-19, feldd's data at 0xF7000–0xFEFFF, where SP-1 Mixer keeps its settings by default, was byte-identical after flashing SP-1 Mixer and then feldd again. A scene saved with the `SP1M_STORAGE=low` layout survived a reboot ([#2](https://github.com/chillingartist/sp-mix/pull/2)). An update from one SP-1 Mixer version to another has not been checked directly.
 
 Not done yet:
 
 - 30-minute and 8-hour soak tests.
-- Scene retention across power-off. Scenes are written to internal flash, but keeping them over a power cycle has not been tested.
-- Whether the scene storage survives flashing a new firmware is unknown. If it does not, settings return to their defaults after an update.
+- Scene retention across a full power-off. A saved scene survives a reboot, but a power cycle has not been tested.
 - The output latency has not been measured (the device-side estimate is about 9–10 ms).
 - macOS and Linux hosts have not been tried.
 
