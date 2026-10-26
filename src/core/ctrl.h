@@ -10,7 +10,13 @@
  * mode is left. The mode is not saved: the SP-1 always starts as the mixer.
  *
  *   FUNCTION + tap PLAY   controller mode on / off
- *   tap PLAY              (controller mode) send the four track volumes again
+ * In controller mode, besides the mixer's gestures:
+ *   tap PLAY              send the four track volumes again
+ *   hold PLAY + fader N   balance of track N (as holding track key N does)
+ *
+ * Mute and solo taps send 127 then 0, as a controller's button does, so the
+ * DAW toggles on each tap; the LEDs follow the SP-1's own copy of the state,
+ * or the DAW's when it sends its state back.
  *
  * Loops: a value that came in over MIDI is never sent back, and what comes
  * in for a control within CTRL_ECHO_MS of it sending is taken as its echo
@@ -56,6 +62,16 @@ struct ctrl {
 	uint32_t chord;
 	uint32_t play_ms;
 	bool play_masked;		/* PLAY is ours, not rui's */
+
+	/* Hold PLAY + fader: balance. rui sees the faders where they were */
+	uint16_t prev_fader[SP1M_TRACKS];
+	uint16_t freeze[SP1M_TRACKS];
+	bool frozen;
+	uint32_t thaw_ms;
+	uint16_t pan_fader[SP1M_TRACKS];
+	int8_t pan_bal[SP1M_TRACKS];
+	bool pan_on[SP1M_TRACKS];
+	bool pan_used;			/* a fader panned during this press */
 
 	uint8_t anim;			/* enum in ctrl.c */
 	uint32_t anim_ms;

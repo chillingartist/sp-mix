@@ -79,11 +79,11 @@ attenuated twice. Send the DAW's mix to outputs 1–2.
 | --- | --- |
 | **FUNCTION + tap PLAY** | Controller mode on / off (also `mode ctrl` / `mode mixer` in the console). The playback LEDs run left to right when it comes on and right to left when it goes off. |
 | Fader 1–4 | CC 20–23 (7-bit) |
-| Tap a track button | Mute on / off: CC 102–105, 127 or 0 |
-| FUNCTION + tap a track button | Solo on / off: CC 106–109, 127 or 0 |
-| Hold a track button + move its fader | Balance: CC 24–27 (64 is centre) |
+| Tap a track button | Mute: CC 102–105, a button press (127, then 0) |
+| FUNCTION + tap a track button | Solo: CC 106–109, a button press (127, then 0) |
+| Hold PLAY + move fader N | Balance of track N: CC 24–27 (64 is centre). Holding track button N instead works too, as in the mixer. |
 | VOL+ / VOL− | The SP-1's master volume, as always. Not sent. |
-| Tap PLAY | Send the four fader volumes again (also `midi dump`). The playback LEDs flash. |
+| Tap PLAY (no fader moved) | Send the four fader volumes again (also `midi dump`). The playback LEDs flash. |
 | Scenes | Not used. Program changes from the host are ignored. |
 
 - **The mode is not saved.** The SP-1 always starts as the mixer. The mixer's
@@ -94,6 +94,11 @@ attenuated twice. Send the DAW's mix to outputs 1–2.
   coming up while in the mode (after 300 ms) send the four fader volumes.
   Balance, mute and solo have no position on the SP-1, so they are sent only
   when they change and the DAW keeps its own settings until then.
+- **Buttons toggle in the DAW.** Every tap of a track button sends 127 and
+  then 0, as a controller's button does, so a DAW that toggles on 127 (Logic's
+  Learn MIDI, for one) mutes or solos on one tap and unmutes on the next. The
+  track LEDs follow the SP-1's own copy of the state, or the DAW's state when
+  the DAW sends it back.
 - **No flooding.** A fader's value changes only once it is 2 fader units past
   a 7-bit step, and each fader and balance sends at most every 10 ms (the
   latest value).

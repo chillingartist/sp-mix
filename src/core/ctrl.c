@@ -2,6 +2,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <math.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "ctrl.h"
@@ -100,6 +102,19 @@ static void send_id(struct ctrl *c, int id, uint32_t now)
 	c->touched[id] = true;
 }
 
+/* A button: on, then off, so the DAW toggles once */
+static void send_pulse(struct ctrl *c, int id, uint32_t now)
+{
+	const uint8_t status = (uint8_t)(0xb0 | c->channel);
+	const uint8_t cc = (uint8_t)(cc_base[id / 4] + id % 4);
+
+	queue(c, status, cc, 127);
+	queue(c, status, cc, 0);
+	c->known[id] = c->last[id];
+	c->touch_ms[id] = now;
+	c->touched[id] = true;
+}
+
 /* The four track volumes, whatever was sent before */
 static void dump(struct ctrl *c, uint32_t now)
 {
@@ -168,14 +183,75 @@ static void take_physical(struct ctrl *c, uint32_t now)
 static void send_changes(struct ctrl *c, uint32_t now)
 {
 	for (int id = 0; id < CTRL_IDS; id++) {
-		/* Mute and solo are switches: no rate limit */
-		const bool rated = id < CTRL_MUTE;
-
-		if (c->last[id] != c->known[id] &&
-		    (!rated || after(now, c->due_ms[id]))) {
+		if (c->last[id] == c->known[id]) {
+			continue;
+		}
+		/* Mute and solo are buttons; volume and balance rate limited */
+		if (id >= CTRL_MUTE) {
+			send_pulse(c, id, now);
+		} else if (after(now, c->due_ms[id])) {
 			send_id(c, id, now);
 		}
 	}
+}
+
+/*
+ * Hold PLAY + move fader N: balance of track N, relative, as holding track
+ * key N does. Meanwhile rui sees the faders where they were before the press
+ * (it does not see PLAY, so it does not wait for the supply to recover);
+ * once the supply has recovered, they pick up the volumes again.
+ */
+static void pan_tick(struct ctrl *c, const struct ui_in *in, struct ui_in *rin,
+		     bool play, bool play_pressed, uint32_t now)
+{
+	struct scene *s = &c->rui.st.current;
+
+	if (play && play_pressed) {
+		c->pan_used = false;
+		c->frozen = true;
+		for (int t = 0; t < SP1M_TRACKS; t++) {
+			c->pan_on[t] = false;
+			c->freeze[t] = c->prev_fader[t];
+			c->pan_fader[t] = in->fader[t];
+		}
+	}
+	if (play) {
+		for (int t = 0; t < SP1M_TRACKS; t++) {
+			const uint16_t f = in->fader[t];
+
+			if (now - c->play_ms < UI_SAG_SETTLE_MS) {
+				/* Reading still drops with the supply: re-anchor */
+				c->pan_fader[t] = f;
+				continue;
+			}
+			if (!c->pan_on[t] &&
+			    abs((int)f - (int)c->pan_fader[t]) >= UI_BAL_ENTER) {
+				c->pan_on[t] = true;
+				c->pan_used = true;
+				c->pan_fader[t] = f;
+				c->pan_bal[t] = s->bal[t];
+			}
+			if (c->pan_on[t]) {
+				int nb = c->pan_bal[t] +
+					 (int)lroundf((float)((int)f - (int)c->pan_fader[t]) *
+						      UI_BAL_PER_FADER);
+
+				s->bal[t] = (int8_t)sp1m_clampi(nb, -BALANCE_MAX, BALANCE_MAX);
+			}
+		}
+		c->thaw_ms = now + UI_SAG_HOLDOFF_MS + 20u;
+	}
+	if (!c->frozen) {
+		return;
+	}
+	if (!play && after(now, c->thaw_ms)) {
+		c->frozen = false;
+		for (int t = 0; t < SP1M_TRACKS; t++) {
+			pickup_arm(&c->rui.vol_pick[t], s->vol[t], in->fader[t]);
+		}
+		return;
+	}
+	memcpy(rin->fader, c->freeze, sizeof(c->freeze));
 }
 
 static void enter(struct ctrl *c, struct ui *local, const struct ui_in *in)
@@ -215,6 +291,8 @@ static void enter(struct ctrl *c, struct ui *local, const struct ui_in *in)
 	}
 
 	c->active = true;
+	c->frozen = false;
+	c->pan_used = false;
 	c->usb_prev = in->usb_configured;
 	dump(c, now);
 	c->anim = ANIM_ENTER;
@@ -336,19 +414,23 @@ void ctrl_tick(struct ctrl *c, struct ui *local, const struct ui_in *in,
 	if (!c->active) {
 		ui_tick(local, in, out);
 		overlay(c, out, now);
+		memcpy(c->prev_fader, in->fader, sizeof(c->prev_fader));
 		return;
 	}
 
 	struct ui_in rin = *in;
+	const bool play = (b & B(PLAY)) && c->play_masked;
 
 	if (c->play_masked) {
 		rin.buttons &= ~B(PLAY);
 	}
 	take_external(c);
+	pan_tick(c, in, &rin, play, (pressed & B(PLAY)) != 0, now);
 	ui_tick(&c->rui, &rin, out);
 	take_physical(c, now);
+	memcpy(c->prev_fader, in->fader, sizeof(c->prev_fader));
 
-	if (play_tap) {
+	if (play_tap && !c->pan_used) {
 		dump(c, now);
 		c->anim = ANIM_SENT;
 		c->anim_ms = now;

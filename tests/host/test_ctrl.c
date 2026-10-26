@@ -239,22 +239,42 @@ TEST(test_ctrl_buttons)
 	hold(0, 50);
 	nsent = 0;
 
+	/* A tap is a button press: 127 then 0, every time, so a DAW that
+	 * toggles on 127 toggles once per tap
+	 */
 	tap(T(2));
-	CHECK(nsent == 1);
-	CHECK(value(103) == 127);
+	CHECK(nsent == 2);
+	CHECK(sent[0].status == 0xb0 && sent[0].d1 == 103 && sent[0].d2 == 127);
+	CHECK(sent[1].status == 0xb0 && sent[1].d1 == 103 && sent[1].d2 == 0);
 	CHECK(u.st.current.mute == 0);
 	CHECK(out.mix.mute_mask == 0);
 	/* The track LED shows the DAW's mute */
 	CHECK(out.led[1] == 0);
 	tap(T(2));
-	CHECK(value(103) == 0);
+	CHECK(nsent == 4);
+	CHECK(sent[2].d1 == 103 && sent[2].d2 == 127);
+	CHECK(sent[3].d1 == 103 && sent[3].d2 == 0);
+	CHECK(out.led[1] != 0);
 
+	nsent = 0;
 	hold(FN, 50);
 	hold(FN | T(3), 80);
 	hold(FN, 30);
 	hold(0, 30);
-	CHECK(value(108) == 127);
+	CHECK(nsent == 2);
+	CHECK(sent[0].d1 == 108 && sent[0].d2 == 127);
+	CHECK(sent[1].d1 == 108 && sent[1].d2 == 0);
 	CHECK(u.st.current.solo == 0);
+	/* Twice with FUNCTION held: two presses */
+	nsent = 0;
+	hold(FN, 50);
+	hold(FN | T(3), 80);
+	hold(FN, 80);
+	hold(FN | T(3), 80);
+	hold(FN, 30);
+	hold(0, 30);
+	CHECK(count(108) == 4);
+	CHECK(count(107) == 0);
 
 	/* Balance: hold track 1 and move its fader */
 	nsent = 0;
@@ -271,6 +291,26 @@ TEST(test_ctrl_buttons)
 	CHECK(c.rui.vol_pick[0].pending);
 	slide(0, 700, 4);
 	CHECK(count(20) == 0);
+
+	/* Balance: hold PLAY and move fader 2; no volume, no resend */
+	nsent = 0;
+	hold(PLAY, 100);
+	in.buttons = PLAY;
+	slide(1, 340, 4);
+	hold(PLAY, 30);
+	hold(0, 100);
+	CHECK(count(25) >= 1);
+	CHECK(value(25) < 64);
+	for (int t = 0; t < SP1M_TRACKS; t++) {
+		CHECK(count(20 + t) == 0);
+	}
+	CHECK(c.rui.st.current.vol[1] == 500);
+	CHECK(c.rui.vol_pick[1].pending);
+	CHECK(!c.rui.scene_layer);
+	/* PLAY tapped without moving a fader: the volumes */
+	nsent = 0;
+	tap(PLAY);
+	CHECK(nsent == 4);
 
 	/* The master volume stays on the SP-1 */
 	master = out.mix.master_gain;
@@ -322,13 +362,13 @@ TEST(test_ctrl_echo)
 	hold(0, 400);
 	nsent = 0;
 	tap(T(1));
-	CHECK(value(102) == 127);
+	CHECK(count(102) == 2);
 	rx(0xb0, 102, 127);
 	hold(0, 400);
 	rx(0xb0, 102, 0);
 	hold(0, 20);
 	CHECK((c.rui.st.current.mute & 1) == 0);
-	CHECK(count(102) == 1);
+	CHECK(count(102) == 2);
 
 	/* No scenes for the DAW */
 	ignored = c.ignored;
