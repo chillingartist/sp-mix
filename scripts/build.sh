@@ -30,6 +30,14 @@ case "${SP1M_STORAGE:-default}" in
 	*) echo "unknown SP1M_STORAGE ${SP1M_STORAGE} (default, low)" >&2; exit 1 ;;
 esac
 
+# SP1M_MIDI=1 adds MIDI control over USB (docs/MIDI.md); SP1M_MIDI_CHANNEL=1..16
+if [ -n "${SP1M_MIDI:-}" ] && [ "${SP1M_MIDI}" != 0 ]; then
+	args+=("-DCONFIG_SP1M_MIDI=y")
+	if [ -n "${SP1M_MIDI_CHANNEL:-}" ]; then
+		args+=("-DCONFIG_SP1M_MIDI_CHANNEL=${SP1M_MIDI_CHANNEL}")
+	fi
+fi
+
 # Which commit the binary is (shown by 'status'); -dirty: uncommitted changes
 args+=("-DSP1M_GIT=$(git -C "$here" describe --always --dirty --abbrev=7 2>/dev/null || echo unknown)")
 

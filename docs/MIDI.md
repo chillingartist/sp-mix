@@ -1,0 +1,99 @@
+# MIDI control
+
+An optional USB-MIDI port lets a DAW, an app or a hardware controller drive
+the mixer: track volume, balance, mute and solo, the master volume and scene
+recall. It is **receive only**: the mixer sends no MIDI. It is off by default
+(`CONFIG_SP1M_MIDI`); without it the firmware is unchanged. The design is
+human-led, with AI assistance on the implementation.
+
+```sh
+SP1M_MIDI=1 scripts/build.sh full                        # channel 1
+SP1M_MIDI=1 SP1M_MIDI_CHANNEL=5 scripts/build.sh full
+```
+
+The SP-1 then shows up as a MIDI device named "SP-Mix" beside the audio
+device and the serial console.
+
+| Function | Message on the selected channel |
+| --- | --- |
+| Track 1–4 volume | CC 20–23, LSB on CC 52–55 |
+| Track 1–4 balance | CC 24–27, LSB on CC 56–59; 64 (8192 in 14 bits) is centre |
+| Master volume | CC 28, LSB on CC 60 |
+| Track 1–4 mute | CC 102–105; 64–127 on, 0–63 off |
+| Track 1–4 solo | CC 106–109; 64–127 on, 0–63 off |
+| Scene recall | Program Change 0–3 means scene 1–4 |
+
+Other messages and channels are ignored. Mute and solo are absolute states,
+so repeating a message does not toggle them. Every Program Change 0–3 recalls,
+repeats included; 4–127 do nothing. Scene save over MIDI (CC 110–113 in the
+proposal) is not implemented.
+
+**Resolution.** A 14-bit value is the MSB on CC n and the LSB on CC n+32, in
+either order. The MSB alone is a plain 7-bit value and reaches full scale, so
+a sender that never sends an LSB works too. Once an LSB has arrived, later
+MSBs keep it.
+
+## How it fits the mixer
+
+A MIDI message changes the **same state** the buttons and faders change, so
+everything that applies to them applies to it: the state is saved to flash
+and stored in scenes, the LEDs show it, and the volume limits hold (the
+master is capped at −20 dB at power-up and when headphones go in, and a
+scene recall never raises it).
+
+- **Volume** maps 0–16383 onto the fader's 0–1023 and the fader's own curve.
+  After a MIDI volume change the physical fader is ignored until it reaches
+  the new value, with the slow track LED blink, exactly as after a scene
+  recall (pulling a fader down still takes over at once).
+- **Balance** maps onto the mixer's −100..+100. A lone 64 and a 14-bit 8192
+  are both centre, and both resolutions reach both ends.
+- **Master** maps 0–16383 evenly onto off, −60..0 dB in the mixer's 1 dB
+  steps.
+- The last writer wins: a button press or fader move after a MIDI message
+  changes the state as usual, and the next MIDI message changes it again.
+
+**Where it runs.** The USB-MIDI class receives in the USB thread and only
+decodes and queues (64 messages; a full queue drops and counts). The control
+thread applies the queue once per 2 ms tick, before the UI tick, so MIDI and
+the buttons and faders are applied by one thread. Nothing runs in the audio
+thread, and the MIDI endpoints are bulk, so they do not touch the isochronous
+audio buffer. `status` prints a `midi` line: packets received, messages
+queued, applied and dropped.
+
+## Vendored code
+
+`src/core/midi/` holds `midi_msg.h`, `midi_hr.[ch]`, `midi_bus.[ch]`,
+`midi_assign.[ch]`, `midi_params.[ch]` and `usb_rt_parse.[ch]` (portable C,
+host-tested), and `src/platform/usb_midi1.[ch]` is the USB-MIDI 1.0 class for
+Zephyr's device stack. Their tests are in `tests/host/midi/`. These are copied
+byte for byte from the MIDI code of a feldd-based SP-1 firmware, where the same
+class has run on macOS, Windows and iOS hosts; `VENDORED.md` records the
+source commit and the SHA-256 of each file. The mixer's own code is
+`src/core/midi_map.[ch]` (the message map) and `src/platform/midi_in.[ch]`
+(the queue between the USB thread and the control thread).
+
+The code is MIT licensed. The USB-MIDI class, the packet decoder
+(`usb_rt_parse`) and the `midi_msg` struct are Benjamin Reece's, from feldd;
+the receive hook in the class, the extraction and the remaining MIDI modules
+and tests are by Ryan Gilmore. The original file notices travel with the
+copies; see also the repository's `THIRD_PARTY_NOTICES.md` and `LICENSE`.
+
+The copies are refreshed by an export script kept with that firmware. It checks all
+first-line copyright notices before copying anything and overwrites only its
+listed files and manifest. Re-running it with the same inputs is idempotent.
+
+## Host tests
+
+From the repository root:
+
+```sh
+cmake -S tests/host -B /tmp/sp1m-host
+cmake --build /tmp/sp1m-host
+ctest --test-dir /tmp/sp1m-host --output-on-failure
+```
+
+The existing `sp1m_tests` runner includes the mixer map tests. The five
+vendored tests each have their own executable and CTest entry.
+They and the vendor modules use AddressSanitizer and UndefinedBehaviorSanitizer
+when the compiler and linker support them. Their assertions remain enabled in
+Release builds. The existing mixer runner retains its sanitizer requirements.

@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - `SP1M_STORAGE=low scripts/build.sh` (and `boards/teenage_engineering/sp1/sp1-storage-low.overlay`): an optional flash layout that keeps the settings in their own 16 KiB at 0xCA000-0xCDFFF instead of the default 0xF7000-0xFEFFF, which other SP-1 firmware also uses. The default layout is unchanged.
+- Optional MIDI control over USB (`CONFIG_SP1M_MIDI`, off by default; receive only): track volume, balance, mute and solo, master volume and scene recall from a DAW, app or controller, on one channel, with 14-bit CC pairs. MIDI sets the same state as the controls, so it is saved, recalled and capped like them. See `docs/MIDI.md`. With the option off, the firmware image is unchanged.
 
 ### Changed
 

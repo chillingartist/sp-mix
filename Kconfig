@@ -34,6 +34,21 @@ config SP1M_CDC
 	select UART_INTERRUPT_DRIVEN
 	select UART_LINE_CTRL
 
+config SP1M_MIDI
+	bool "MIDI control over USB (receive only)"
+	depends on SP1M_USB
+	select RING_BUFFER
+	help
+	  A USB-MIDI 1.0 port: controllers on one channel set track volume,
+	  balance, mute and solo, the master volume and scene recall, as the
+	  buttons and faders do. The mixer sends no MIDI. docs/MIDI.md.
+
+config SP1M_MIDI_CHANNEL
+	int "MIDI channel"
+	depends on SP1M_MIDI
+	range 1 16
+	default 1
+
 config SP1M_AUDIO_OUT
 	bool "Audio output: codecs, I2S, mixer, ASRC"
 	default y
