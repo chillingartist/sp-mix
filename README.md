@@ -4,7 +4,7 @@ SP-Mix is unofficial firmware for the teenage engineering SP-1 (nRF52840) that t
 
 ## What's new
 
-**2026-10-26, not in a release yet: controller mode** (in `sp-mix-full-midi` builds). FUNCTION + tap PLAY turns the SP-1 into a control surface for the DAW: the faders send CC 20–23, a track tap mutes (CC 102–105), PLAY + tap solos (CC 106–109; taps send a button press, 127 then 0, so the DAW toggles) and PLAY + fader sets the balance (CC 24–27, absolute, taking over once the fader passes the current balance), so the DAW's faders follow after MIDI Learn and the DAW does the mixing. The SP-1 then passes the host's audio at 0 dB with only its master volume, so nothing is attenuated twice; send the DAW's mix to outputs 1–2. The four volumes go out on entering the mode, on a PLAY tap and when USB comes up. Faders have hysteresis and a rate limit, values from the DAW are never sent back, and echoes are ignored. The mode is not saved and the mixer's own state comes back when you leave it. See [docs/MIDI.md](docs/MIDI.md#controller-mode).
+**v0.1.11-beta (2026-10-26, pre-release): controller mode.** With `sp-mix-full-midi.bin` from the [v0.1.11-beta pre-release](https://github.com/chillingartist/sp-mix/releases), FUNCTION + tap PLAY turns the SP-1 into a control surface for your DAW: the faders, track buttons and PLAY layer send MIDI, the DAW's faders follow after MIDI Learn, and the DAW does the mixing while the SP-1 stays your audio interface. Tested on an iPad with Logic Pro. See [Controller mode (beta)](#controller-mode-beta) for how to set it up. The mixer works exactly as before, and the stable release is still v0.1.10.
 
 **v0.1.10 (2026-10-26)** contains the three changes below. Download it from [Releases](https://github.com/chillingartist/sp-mix/releases); see [CHANGELOG.md](CHANGELOG.md) for the details.
 
@@ -16,7 +16,7 @@ SP-Mix is unofficial firmware for the teenage engineering SP-1 (nRF52840) that t
 
 ## Status
 
-The current release is v0.1.10 (see [CHANGELOG.md](CHANGELOG.md)); v0.1.0 was the first public release. The firmware runs on the SP-1 with Windows and iPad hosts, but long-run testing is not finished.
+The current release is v0.1.10 (see [CHANGELOG.md](CHANGELOG.md)); v0.1.0 was the first public release. v0.1.11-beta is a pre-release that adds [controller mode](#controller-mode-beta). The firmware runs on the SP-1 with Windows and iPad hosts, but long-run testing is not finished.
 
 Verified on hardware:
 
@@ -44,9 +44,9 @@ Not done yet:
 - **Browser console:** `tools/sp1-console.html` talks to the serial port from Chrome or Edge (Web Serial). It shows live button and fader readings, runs a per-button test, shows the status and reset history, and copies the diagnostics with one click.
 - **Power handling:** power off and on with FUNCTION, standby while on USB power, automatic power-off when no host is connected, and battery charging that can be switched on or off.
 
-Optional, off by default: MIDI control over USB, and a controller mode in which the faders and buttons drive the DAW instead (see [docs/MIDI.md](docs/MIDI.md)); the release has it as `sp-mix-full-midi.bin`.
+Optional, in `sp-mix-full-midi.bin`: MIDI control over USB (the DAW drives the mixer), and in v0.1.11-beta a [controller mode](#controller-mode-beta) (the SP-1 drives the DAW). See [docs/MIDI.md](docs/MIDI.md).
 
-Not included: MIDI output, audio back to the host, the 3.5 mm analog input, Bluetooth and effects. Android is not a target platform.
+Not included: audio back to the host, the 3.5 mm analog input, Bluetooth and effects. Android is not a target platform.
 
 ## Disclaimer
 
@@ -65,7 +65,7 @@ Not included: MIDI output, audio back to the host, the 3.5 mm analog input, Blue
 
 ### Install the firmware
 
-1. Download `sp-mix-full.bin` from the [Releases](https://github.com/chillingartist/sp-mix/releases) page (in v0.1.0 the file is called `sp1mixer-full.bin`). For MIDI control, take `sp-mix-full-midi.bin` instead (see [docs/MIDI.md](docs/MIDI.md)).
+1. Download `sp-mix-full.bin` from the [Releases](https://github.com/chillingartist/sp-mix/releases) page (in v0.1.0 the file is called `sp1mixer-full.bin`). For MIDI control, take `sp-mix-full-midi.bin` instead (see [docs/MIDI.md](docs/MIDI.md)); for [controller mode](#controller-mode-beta), take it from the v0.1.11-beta pre-release.
 2. Put the SP-1 into its bootloader by holding **Track 1 + Track 4** while you plug in the USB cable. Keep holding until the updater sees the device. This is a feature of the SP-1's bootloader and works with any firmware installed.
 3. Write the `.bin` file with the [Solderless web updater](https://solderless.engineering), a web tool that flashes the SP-1 through its bootloader, and follow its instructions.
 4. The SP-1 restarts into the mixer. The LEDs light up briefly, then the track LEDs stay dimly lit. The host now sees a USB audio device with 8 output channels and a serial port.
@@ -138,6 +138,55 @@ The SP-1 appears as one 8-channel playback device with a 7.1 channel layout. The
 
 - Track LEDs show the level the host sends for that track, before the fader. A track LED is off when the track is muted or silenced by another track's solo. It blinks fast when the track is soloed and slowly while its fader waits for soft takeover. In the scene layer, the track LEDs instead show which slots hold a scene (dim) and the scene last saved or recalled (bright).
 - Playback LEDs in meter mode show the output level, with steps at −30, −18, −9 and −3 dBFS. In status mode, LEDs 1–4 show USB connected, streaming, headphones in, and charging (blinking). All four flash briefly on a buffer underrun.
+
+## Controller mode (beta)
+
+In controller mode the SP-1 is a control surface for your DAW. The faders and buttons send MIDI to the DAW, the DAW's own faders, mute, solo and pan follow, and the DAW does the mixing. The SP-1 stays your audio interface: the DAW's mix plays from its headphone jack or speaker at 0 dB, with only the SP-1's master volume applied, so nothing is turned down twice. One USB cable carries both the audio and the control.
+
+It is in `sp-mix-full-midi.bin` from the [v0.1.11-beta pre-release](https://github.com/chillingartist/sp-mix/releases). It has been tested on an iPad with Logic Pro; other DAWs and hosts have not been tried yet. The SP-1 always starts as the mixer, and the mixer works exactly as before.
+
+### Set it up
+
+1. **Flash** `sp-mix-full-midi.bin` (see [Install the firmware](#install-the-firmware)). The host now sees a MIDI device named "SP-Mix" next to the audio device and the serial port.
+2. **Route the audio:** in the DAW, send the master (stereo) output to outputs 1–2 of the SP-Mix audio device.
+3. **Turn the SP-1's volume down** with VOL−. In controller mode the SP-1 no longer turns tracks down itself, so the first notes can be louder than in the mixer.
+4. **Enter controller mode:** hold FUNCTION and tap PLAY. The playback LEDs run from left to right, and in meter mode the first playback LED stays dimly lit for as long as the mode is on. The SP-1 sends the four fader positions at once.
+5. **Map the controls with MIDI Learn.** In Logic Pro for iPad: open Learn MIDI, move or press the control on the SP-1, then touch the control in Logic it should drive; repeat for each one. Map faders 1–4 to the volumes of four tracks (or buses), the track buttons to their mutes, PLAY + track buttons to their solos and PLAY + faders to their pans. If the DAW asks how a button behaves, choose toggle.
+6. **Line the DAW up again** at any time with a tap on PLAY (the playback LEDs flash).
+7. **Leave controller mode** with FUNCTION + tap PLAY again (the LEDs run from right to left). The mixer comes back as you left it, and its faders pick up their volumes (slow LED blink until you reach them).
+
+### Controls in controller mode
+
+| Control | What it does | MIDI (channel 1) |
+| --- | --- | --- |
+| Fader 1–4 | Volume of the DAW track mapped to it | CC 20–23 |
+| Tap a track button | Mute on / off in the DAW | CC 102–105: 127, then 0 |
+| Hold PLAY + tap a track button | Solo on / off in the DAW | CC 106–109: 127, then 0 |
+| Hold PLAY + move fader N | Pan of track N: bottom = left, middle = centre, top = right | CC 24–27 (64 = centre) |
+| Tap PLAY (no fader moved) | Send the four fader positions again | CC 20–23 |
+| VOL+ / VOL− | The SP-1's own master volume (not sent) | – |
+| FUNCTION + tap PLAY | Back to the mixer | – |
+| FWD / BACK, FUNCTION + FWD / BACK, power off, bootloader | As in the mixer | – |
+
+**Pan with PLAY.** While PLAY is held, each fader is a pan control. It takes over only once it has passed the track's current pan, so the pan never jumps and you can set it wherever the volume fader happens to be. Until a fader has passed its pan, its track LED blinks; then it stays lit. The middle of the fader travel snaps to exact centre. The volumes are not touched, and after you let go of PLAY the faders pick up their volumes again. (Holding a track button and moving its fader still changes the pan step by step, as in the mixer.)
+
+**LEDs in controller mode.** The track LEDs show the DAW's side: off when the track is muted (or silenced by a solo), fast blink when soloed, slow blink while the fader waits to pick up a volume, and otherwise the level coming in from the host. While PLAY is held they show the pan pickup as above.
+
+### Good to know
+
+- **Buttons work like a controller's buttons:** every tap sends 127 and then 0, and the DAW toggles mute or solo on each tap.
+- **The DAW's automation:** when the DAW sends a volume back (automation playback, or MIDI feedback), the SP-1's fader waits for it with the slow blink, so the DAW's fader does not jump when you take over. Mute and solo sent back by the DAW show on the track LEDs.
+- **No floods, no loops:** a resting fader sends nothing, a moving one at most every 10 ms. A value that came in from the DAW is never sent back, and what comes back for a control right after it moved (within 300 ms) is ignored as its echo, so input monitoring or MIDI thru in the DAW is harmless.
+- **Not saved:** controller mode is off after a restart. The master volume, the speaker mode and the LED mode carry over between the two modes; the mix and the scenes stay with the mixer. Scenes and program changes are not used in controller mode.
+- **All four audio pairs pass at 0 dB.** If the DAW sends to outputs 3–8 as well, those are added at full level, so let the DAW mix down to 1–2.
+- The serial console shows `mode ctrl` at the end of the `ctrl` line, which then holds the DAW's side. `mode ctrl`, `mode mixer` and `midi dump` do the same as the buttons. Details: [docs/MIDI.md](docs/MIDI.md#controller-mode).
+
+### If something does not work
+
+- **No "SP-Mix" MIDI port:** check that you flashed `sp-mix-full-midi.bin`, not `sp-mix-full.bin`, then unplug and replug USB. Close and reopen the DAW if it was open. In status LED mode (tap FWD or BACK), playback LED 1 shows whether the host has the SP-1 connected.
+- **A button needs two taps to undo:** the DAW reads the button as on/off rather than toggle. Set the assignment to toggle, or learn it again.
+- **Nothing is heard:** check that the DAW plays to outputs 1–2 of SP-Mix and that the SP-1's master volume is up.
+- **A fader does nothing:** it may be waiting to pick up a value (slow blink): move it through the value the DAW has.
 
 ## Serial console
 

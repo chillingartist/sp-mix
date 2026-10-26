@@ -6,9 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.11-beta] - 2026-10-26
+
+Pre-release. `sp-mix-full-midi.bin` has controller mode; `sp-mix-full.bin` (the mixer without MIDI) works as in 0.1.10. Settings from 0.1.10 carry over. How to use it: [Controller mode (beta)](https://github.com/chillingartist/sp-mix#controller-mode-beta) in the README.
+
 ### Added
 
-- Controller mode (MIDI builds, `sp-mix-full-midi.bin`): FUNCTION + tap PLAY, or `mode ctrl` in the console. The faders and buttons send CC to the DAW (volume CC 20–23; balance 24–27, absolute with PLAY held once the fader passes the current balance; mute 102–105 and solo 106–109 with PLAY held, as button presses, 127 then 0), the DAW mixes, and the SP-1 passes the host's audio at 0 dB with only its master volume. The four volumes are sent on entering the mode, on a PLAY tap (`midi dump`) and when USB comes up. Faders have hysteresis and a 10 ms rate limit, values from the DAW are never sent back, and echoes within 300 ms of a control moving are ignored. The mode is not saved, and the mixer's state comes back when it is left. See `docs/MIDI.md`.
+- Controller mode (MIDI builds, `sp-mix-full-midi.bin`): FUNCTION + tap PLAY, or `mode ctrl` in the console. The faders and buttons send CC to the DAW (volume CC 20–23; balance 24–27, absolute with PLAY held once the fader passes the current balance; mute 102–105 on a track tap and solo 106–109 on PLAY + track tap, as button presses, 127 then 0), the DAW mixes, and the SP-1 passes the host's audio at 0 dB with only its master volume. The four volumes are sent on entering the mode, on a PLAY tap (`midi dump`) and when USB comes up. Faders have hysteresis and a 10 ms rate limit, values from the DAW are never sent back, and echoes within 300 ms of a control moving are ignored. The mode is not saved, and the mixer's state comes back when it is left. See `docs/MIDI.md`.
+
+### Changed
+
+- Releases whose version has a suffix (such as `-beta`) are marked as pre-releases.
+
+### Known issues
+
+- Controller mode has been tested on an iPad with Logic Pro only. Other DAWs, Windows and macOS have not been tried.
+- MIDI control in mixer mode is unchanged and covered by the host tests, but has not been tried on hardware again with this build.
+- Mute and solo sent in controller mode are button presses (127, then 0), while the mixer reads mute and solo as on/off: playing such a recording back to the SP-1 in mixer mode does not mute.
+- The known issues of 0.1.10 still apply.
 
 ## [0.1.10] - 2026-10-26
 

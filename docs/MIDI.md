@@ -68,6 +68,9 @@ queued, applied and dropped, and for controller mode the messages ignored
 
 ## Controller mode
 
+From v0.1.11-beta (a pre-release), in `sp-mix-full-midi.bin`. The README has
+a step-by-step guide: [Controller mode (beta)](../README.md#controller-mode-beta).
+
 In controller mode the SP-1 is a control surface for the DAW, and the DAW
 does the mixing. The faders and buttons send the same messages the mixer
 receives (the table above), so a DAW maps them with MIDI Learn, and what it
