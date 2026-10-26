@@ -4,6 +4,8 @@ SP-Mix is unofficial firmware for the teenage engineering SP-1 (nRF52840) that t
 
 ## What's new
 
+**2026-10-26, not in a release yet: optional MIDI control over USB.** Build with `SP1M_MIDI=1 scripts/build.sh full` (channel 1; `SP1M_MIDI_CHANNEL=1..16` picks another), and the SP-1 shows up as a MIDI device named "SP-Mix" next to the audio device and the serial console. A DAW, an app such as AUM or a hardware controller can then set track volume (CC 20–23), balance (CC 24–27), master volume (CC 28), mute (CC 102–105) and solo (CC 106–109), and recall scenes (Program Change 0–3), with 14-bit CC pairs where the sender supports them. MIDI sets the same state as the faders and buttons, so it is saved, stored in scenes and capped like them, and a fader takes over again once it reaches the new value (the track LED blinks slowly while it waits). It is receive only: the mixer sends no MIDI. It is off by default, the prebuilt `.bin` files do not include it, and without it the firmware is unchanged. Tested on hardware on macOS (track volume, takeover, 14-bit values, balance). Windows, the iPad, and mute, solo, master and scene recall over MIDI have not been tried on hardware yet. See [docs/MIDI.md](docs/MIDI.md). Thanks to [@ryanmgilmore](https://github.com/ryanmgilmore) ([#3](https://github.com/chillingartist/sp-mix/pull/3)); the USB-MIDI class and the MIDI core come from Benjamin Reece's [feldd](https://github.com/bnjreece/feldd-sp1-firmware).
+
 **2026-10-20: the project is now called SP-Mix.** From the next release the SP-1 shows up on the host as "SP-Mix", the release files are `sp-mix-<variant>.bin`, and the first line of `status` starts with `sp-mix`. v0.1.0 still uses the old name, SP-1 Mixer (`sp1mixer-full.bin`); the console page reads both. Windows may keep showing the old device name until the device is uninstalled in Device Manager. To build from source, clone into the default `sp-mix` directory.
 
 **2026-10-20, since v0.1.0 (not in a release yet): optional settings location.** By default the settings (scenes and the last state) are stored in flash at 0xF7000–0xFEFFF. feldd keeps its profiles at the same address. If you switch an SP-1 between SP-Mix and other firmware, build with `SP1M_STORAGE=low scripts/build.sh full`. The settings then go in their own 16 KiB at 0xCA000–0xCDFFF, and neither firmware touches the other's data. Tested on hardware: a saved scene survived a reboot, and feldd's profiles were byte-identical after switching back to feldd. The default layout and the prebuilt `.bin` files are unchanged. The two layouts do not see each other's settings, so switching layouts starts from the defaults. See [Build](#build) and [CHANGELOG.md](CHANGELOG.md). Thanks to [@ryanmgilmore](https://github.com/ryanmgilmore) ([#2](https://github.com/chillingartist/sp-mix/pull/2)).
@@ -25,7 +27,7 @@ Not done yet:
 - 30-minute and 8-hour soak tests.
 - Scene retention across a full power-off. A saved scene survives a reboot, but a power cycle has not been tested.
 - The output latency has not been measured (the device-side estimate is about 9–10 ms).
-- macOS and Linux hosts have not been tried.
+- macOS: the SP-1 enumerates (audio device, serial port and the optional MIDI port, [#3](https://github.com/chillingartist/sp-mix/pull/3)), but playback has not been checked. Linux has not been tried.
 
 ## Features
 
