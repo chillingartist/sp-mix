@@ -45,7 +45,14 @@ int test_checks;
 	X(test_midi_map_bindings)			\
 	X(test_midi_map_messages)			\
 	X(test_midi_map_curves)			\
-	X(test_midi_map_pickup)
+	X(test_midi_map_pickup)			\
+	X(test_ctrl_values)			\
+	X(test_ctrl_mode_switch)		\
+	X(test_ctrl_fader_sends)		\
+	X(test_ctrl_buttons)			\
+	X(test_ctrl_echo)			\
+	X(test_ctrl_usb_dump)			\
+	X(test_ctrl_mixer_unchanged)
 
 #define DECLARE(fn) void fn(void);
 TESTS(DECLARE)

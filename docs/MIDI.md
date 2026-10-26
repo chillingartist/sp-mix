@@ -2,7 +2,9 @@
 
 An optional USB-MIDI port lets a DAW, an app or a hardware controller drive
 the mixer: track volume, balance, mute and solo, the master volume and scene
-recall. It is **receive only**: the mixer sends no MIDI. It is off by default
+recall. As a mixer it is **receive only**: it sends no MIDI. In
+[controller mode](#controller-mode) the roles turn around: the faders and
+buttons send to the DAW, and the DAW mixes. MIDI is off by default
 (`CONFIG_SP1M_MIDI`); without it the firmware is unchanged. The design is
 human-led, with AI assistance on the implementation.
 
@@ -61,7 +63,52 @@ thread applies the queue once per 2 ms tick, before the UI tick, so MIDI and
 the buttons and faders are applied by one thread. Nothing runs in the audio
 thread, and the MIDI endpoints are bulk, so they do not touch the isochronous
 audio buffer. `status` prints a `midi` line: packets received, messages
-queued, applied and dropped.
+queued, applied and dropped, and for controller mode the messages ignored
+(echoes, program changes), sent, and lost before sending.
+
+## Controller mode
+
+In controller mode the SP-1 is a control surface for the DAW, and the DAW
+does the mixing. The faders and buttons send the same messages the mixer
+receives (the table above), so a DAW maps them with MIDI Learn, and what it
+records can be played back to the SP-1. The SP-1 passes the host's audio at
+0 dB on all four tracks and applies only its master volume, so nothing is
+attenuated twice. Send the DAW's mix to outputs 1–2.
+
+| Control | In controller mode |
+| --- | --- |
+| **FUNCTION + tap PLAY** | Controller mode on / off (also `mode ctrl` / `mode mixer` in the console). The playback LEDs run left to right when it comes on and right to left when it goes off. |
+| Fader 1–4 | CC 20–23 (7-bit) |
+| Tap a track button | Mute on / off: CC 102–105, 127 or 0 |
+| FUNCTION + tap a track button | Solo on / off: CC 106–109, 127 or 0 |
+| Hold a track button + move its fader | Balance: CC 24–27 (64 is centre) |
+| VOL+ / VOL− | The SP-1's master volume, as always. Not sent. |
+| Tap PLAY | Send the four fader volumes again (also `midi dump`). The playback LEDs flash. |
+| Scenes | Not used. Program changes from the host are ignored. |
+
+- **The mode is not saved.** The SP-1 always starts as the mixer. The mixer's
+  own state (volumes, mute, solo, balance, scenes) stays as it was and comes
+  back when the mode is left; the faders then pick up the mixer's volumes.
+  The master volume, the speaker mode and the LED mode carry over both ways.
+- **The DAW lines up at once.** Entering the mode, tapping PLAY, and USB
+  coming up while in the mode (after 300 ms) send the four fader volumes.
+  Balance, mute and solo have no position on the SP-1, so they are sent only
+  when they change and the DAW keeps its own settings until then.
+- **No flooding.** A fader's value changes only once it is 2 fader units past
+  a 7-bit step, and each fader and balance sends at most every 10 ms (the
+  latest value).
+- **No loops.** A value that came in over MIDI is never sent back. What comes
+  in for a control within 300 ms of it moving or sending is taken as its echo
+  and ignored, so a DAW that sends the messages back (MIDI thru, input
+  monitoring) does not pull a fader that is being moved.
+- **The DAW's automation.** A volume that comes in from the DAW moves the
+  DAW's side only. The physical fader then waits for it, with the slow LED
+  blink, exactly as after a scene recall, so the DAW's fader does not jump
+  when you take over. Mute and solo from the DAW show on the track LEDs.
+- **The LEDs** show the DAW's side: the track LEDs show mute, solo, pickup and
+  the incoming level, and in meter mode the first playback LED stays dimly lit
+  as a reminder that the SP-1 is in controller mode.
+- The console's `ctrl` line shows the DAW's side and ends with `mode ctrl`.
 
 ## Vendored code
 
@@ -73,7 +120,8 @@ byte for byte from the MIDI code of a feldd-based SP-1 firmware, where the same
 class has run on macOS, Windows and iOS hosts; `VENDORED.md` records the
 source commit and the SHA-256 of each file. The mixer's own code is
 `src/core/midi_map.[ch]` (the message map) and `src/platform/midi_in.[ch]`
-(the queue between the USB thread and the control thread).
+(the queue between the USB thread and the control thread, and the send path),
+and `src/core/ctrl.[ch]` (controller mode).
 
 The code is MIT licensed. The USB-MIDI class, the packet decoder
 (`usb_rt_parse`) and the `midi_msg` struct are Benjamin Reece's, from feldd;

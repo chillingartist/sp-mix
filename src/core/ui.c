@@ -184,6 +184,38 @@ void ui_set_spk_mode(struct ui *u, enum spk_mode mode, uint32_t now_ms)
 	}
 }
 
+void ui_set_led_mode(struct ui *u, enum led_mode mode, uint32_t now_ms)
+{
+	if (u->st.led_mode != (uint8_t)mode) {
+		u->st.led_mode = (uint8_t)mode;
+		mark_dirty(u, now_ms, false);
+	}
+}
+
+void ui_resume(struct ui *u, const struct ui_in *in)
+{
+	const uint32_t b = in->buttons & ((1u << BTN_COUNT) - 1u);
+
+	/* Whatever is held now was pressed for the other instance */
+	u->prev_buttons = b;
+	u->chord = b | UI_CHORD_CANCEL;
+	for (int i = 0; i < BTN_COUNT; i++) {
+		u->press_ms[i] = in->now_ms;
+	}
+	u->fn_alone = false;
+	u->fn_fired = false;
+	u->t14_active = false;
+	u->scene_layer = false;
+	u->vol_show_until = in->now_ms;
+	u->hp_prev = in->hp_present || in->hp_maybe;
+	u->last_activity_ms = in->now_ms;
+	for (int t = 0; t < SP1M_TRACKS; t++) {
+		u->bal_active[t] = false;
+		u->last_fader[t] = in->fader[t];
+		pickup_arm(&u->vol_pick[t], u->st.current.vol[t], in->fader[t]);
+	}
+}
+
 void ui_set_charge_off(struct ui *u, bool off, uint32_t now_ms)
 {
 	if (u->st.charge_off != (off ? 1 : 0)) {

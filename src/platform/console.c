@@ -461,8 +461,10 @@ static void print_status_lines(void)
 		struct midi_in_stats m;
 
 		midi_in_get_stats(&m);
-		outf("midi pkts %u msgs %u applied %u dropped %u\r\n",
-		     m.packets, m.messages, m.applied, m.dropped);
+		outf("midi pkts %u msgs %u applied %u dropped %u ignored %u "
+		     "sent %u lost %u\r\n",
+		     m.packets, m.messages, m.applied, m.dropped, m.ignored,
+		     m.sent, m.overflow);
 	}
 #endif
 	outf("peak dBFS");
@@ -508,7 +510,7 @@ static void print_status_lines(void)
 #endif
 
 	outf("ctrl vol %u %u %u %u bal %d %d %d %d mute 0x%x solo 0x%x master %d "
-	     "spk %s/%d hp %s chg %d%s slots 0x%x dirty %d writes %u/%u err\r\n",
+	     "spk %s/%d hp %s chg %d%s slots 0x%x dirty %d writes %u/%u err",
 	     c.cur.vol[0], c.cur.vol[1], c.cur.vol[2], c.cur.vol[3],
 	     c.cur.bal[0], c.cur.bal[1], c.cur.bal[2], c.cur.bal[3],
 	     c.cur.mute, c.cur.solo, c.cur.master_db,
@@ -518,6 +520,11 @@ static void print_status_lines(void)
 	     c.hp_known ? (c.hp_present ? "1" : "0") : "?",
 	     c.charging, c.charge_off ? " (off)" : "",
 	     c.slot_valid, c.dirty, c.store_writes, c.store_errors);
+#if defined(CONFIG_SP1M_MIDI)
+	/* In controller mode the values above are the DAW's side */
+	outf(" mode %s", c.ctrl_mode ? "ctrl" : "mixer");
+#endif
+	outf("\r\n");
 
 	print_main();
 	print_threads(false);
@@ -630,6 +637,28 @@ static void cmd_vol(struct cli *c, int argc, char **argv)
 	}
 }
 
+#if defined(CONFIG_SP1M_MIDI)
+static void cmd_mode(struct cli *c, int argc, char **argv)
+{
+	if (strcmp(argv[1], "ctrl") == 0) {
+		post(CTRL_MODE, 1);
+	} else if (strcmp(argv[1], "mixer") == 0) {
+		post(CTRL_MODE, 0);
+	} else {
+		out(NULL, "error: mixer or ctrl\r\n");
+	}
+}
+
+static void cmd_midi(struct cli *c, int argc, char **argv)
+{
+	if (strcmp(argv[1], "dump") == 0) {
+		post(CTRL_MIDI_DUMP, 0);
+	} else {
+		out(NULL, "error: dump\r\n");
+	}
+}
+#endif
+
 static void cmd_charge(struct cli *c, int argc, char **argv)
 {
 	if (strcmp(argv[1], "on") == 0) {
@@ -707,6 +736,12 @@ static const struct cli_cmd cmds[] = {
 	  cmd_audio },
 #endif
 	{ "vol", "<-60..0>|off  (master volume, dB)", 1, 1, cmd_vol },
+#if defined(CONFIG_SP1M_MIDI)
+	{ "mode", "mixer|ctrl  (ctrl: faders and buttons send MIDI to the DAW)", 1, 1,
+	  cmd_mode },
+	{ "midi", "dump  (controller mode: send the track volumes again)", 1, 1,
+	  cmd_midi },
+#endif
 #if defined(CONFIG_SP1M_AUDIO_OUT)
 	{ "codec", "[cs <reg hex> | tas <page hex> <reg hex>]", 0, 3, cmd_codec },
 #endif

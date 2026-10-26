@@ -160,6 +160,14 @@ void ui_ext_balance(struct ui *u, int track, int bal, uint32_t now_ms);
 void ui_ext_mute(struct ui *u, int track, bool on, uint32_t now_ms);
 void ui_ext_solo(struct ui *u, int track, bool on, uint32_t now_ms);
 void ui_set_charge_off(struct ui *u, bool off, uint32_t now_ms);
+void ui_set_led_mode(struct ui *u, enum led_mode mode, uint32_t now_ms);
+
+/*
+ * Continue after another UI instance had the controls (controller mode):
+ * buttons held now count as no tap, and the faders wait to pick up the
+ * stored volumes.
+ */
+void ui_resume(struct ui *u, const struct ui_in *in);
 
 /* Something should be written to flash (when writing is allowed). */
 bool ui_persist_due(const struct ui *u, uint32_t now_ms);

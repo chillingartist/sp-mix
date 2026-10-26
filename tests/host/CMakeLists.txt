@@ -24,6 +24,7 @@ add_executable(sp1m_tests
   test_ui.c
   test_cli.c
   test_midi_map.c
+  test_ctrl.c
   ${CORE_SOURCES}
 )
 target_include_directories(sp1m_tests PRIVATE ${CORE} ${CMAKE_CURRENT_SOURCE_DIR})

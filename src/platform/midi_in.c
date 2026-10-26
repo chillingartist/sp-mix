@@ -6,6 +6,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/atomic.h>
 
+#include "ctrl.h"
 #include "midi/midi_bus.h"
 #include "midi/usb_rt_parse.h"
 #include "midi_in.h"
@@ -26,6 +27,7 @@ static uint32_t applied;
 static struct midi_params params;
 static struct sp1m_midi_context ctx;
 static struct ui *ui;
+static struct ctrl *ctrl;
 static bool started;
 
 /* USB thread: decode and queue, nothing else */
@@ -57,9 +59,10 @@ void midi_in_init(void)
 	usb_midi1_set_rx(rx, NULL);
 }
 
-void midi_in_start(struct ui *u, const struct ui_in *in)
+void midi_in_start(struct ui *u, const struct ui_in *in, struct ctrl *c)
 {
 	ui = u;
+	ctrl = c;
 	ctx.ui = u;
 	ctx.in = in;
 	sp1m_midi_params_init(&params, CONFIG_SP1M_MIDI_CHANNEL - 1);
@@ -75,11 +78,31 @@ void midi_in_poll(void)
 	if (!started) {
 		return;
 	}
+	/* The mixer, or the DAW's side in controller mode */
+	ctx.ui = ctrl_ui(ctrl, ui);
 	/* The state as the last tick left it: faders and buttons included */
-	sp1m_midi_sync(&params, &ui->st.current);
+	sp1m_midi_sync(&params, &ctx.ui->st.current);
 	while (k_msgq_get(&midi_q, &m, K_NO_WAIT) == 0) {
+		if (!ctrl_filter_in(ctrl, &m, ctx.in->now_ms)) {
+			continue;
+		}
 		midi_params_on_msg(&m, MIDI_SRC_USB, &params);
 		applied++;
+	}
+}
+
+void midi_out_flush(void)
+{
+	struct midi_msg m;
+
+	if (!started) {
+		return;
+	}
+	while (ctrl_take(ctrl, &m)) {
+		/* USB-MIDI 1.0 event packet, cable 0: CIN = the status nibble */
+		const uint8_t pkt[4] = { (uint8_t)(m.status >> 4), m.status, m.d1, m.d2 };
+
+		usb_midi1_send(pkt);
 	}
 }
 
@@ -89,4 +112,7 @@ void midi_in_get_stats(struct midi_in_stats *out)
 	out->messages = (uint32_t)atomic_get(&messages);
 	out->dropped = (uint32_t)atomic_get(&dropped);
 	out->applied = applied;
+	out->ignored = ctrl != NULL ? ctrl->ignored : 0;
+	out->sent = ctrl != NULL ? ctrl->sent : 0;
+	out->overflow = ctrl != NULL ? ctrl->overflow : 0;
 }

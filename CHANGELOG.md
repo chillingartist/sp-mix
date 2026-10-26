@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Controller mode (MIDI builds, `sp-mix-full-midi.bin`): FUNCTION + tap PLAY, or `mode ctrl` in the console. The faders and buttons send CC to the DAW (volume CC 20–23, balance 24–27, mute 102–105, solo 106–109), the DAW mixes, and the SP-1 passes the host's audio at 0 dB with only its master volume. The four volumes are sent on entering the mode, on a PLAY tap (`midi dump`) and when USB comes up. Faders have hysteresis and a 10 ms rate limit, values from the DAW are never sent back, and echoes within 300 ms of a control moving are ignored. The mode is not saved, and the mixer's state comes back when it is left. See `docs/MIDI.md`.
+
 ## [0.1.10] - 2026-10-26
 
 Release files: `sp-mix-full.bin` is the mixer, as in 0.1.0. `sp-mix-full-midi.bin` is the same with MIDI control over USB on channel 1 (see `docs/MIDI.md`). `sp-mix-m0.bin` and `sp-mix-m1.bin` are bring-up builds. Settings saved by 0.1.0 should carry over: their format has not changed, and flashing leaves the settings area alone.

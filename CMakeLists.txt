@@ -9,8 +9,8 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(sp-mix)
 
 file(GLOB core_sources src/core/*.c)
-# The MIDI map is built only with MIDI control
-list(FILTER core_sources EXCLUDE REGEX "/midi_map\\.c$")
+# The MIDI map and controller mode are built only with MIDI control
+list(FILTER core_sources EXCLUDE REGEX "/(midi_map|ctrl)\\.c$")
 target_sources(app PRIVATE ${core_sources})
 
 # Keep plain copy loops as loops: the toolchain's memcpy/memset are byte
@@ -39,6 +39,7 @@ target_sources_ifdef(CONFIG_SP1M_USB app PRIVATE src/platform/usb.c)
 target_sources_ifdef(CONFIG_SP1M_CDC app PRIVATE src/platform/console.c)
 target_sources_ifdef(CONFIG_SP1M_MIDI app PRIVATE
   src/core/midi_map.c
+  src/core/ctrl.c
   src/core/midi/midi_params.c
   src/core/midi/midi_hr.c
   src/core/midi/midi_bus.c

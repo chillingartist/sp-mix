@@ -918,7 +918,8 @@ function onStatus(lines) {
 				["Speaker", at("spk", 1)], ["Headphones in", { "1": "yes", "0": "no", "-": "(no audio output in this build)" }[at("hp", 1)] || "unknown"],
 				["Charging", at("chg", 1) === "1" ? "yes" : "no"], ["Saved scenes", at("slots", 1)],
 				["Write pending", at("dirty", 1) === "1" ? "yes" : "no"], ["Writes/errors", at("writes", 1)],
-			]);
+			].concat(t.includes("mode") ? [["Mode", at("mode", 1) === "ctrl" ?
+				"controller (faders and buttons send MIDI; the values above are the DAW's)" : "mixer"]] : []));
 		}
 	}
 }

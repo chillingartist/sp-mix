@@ -27,6 +27,8 @@ enum ctrl_cmd_type {
 	CTRL_MASTER,		/* arg: master volume in dB */
 	CTRL_SPEAKER_FORCE,	/* arg: 1 = speaker on whatever the jack says */
 	CTRL_REBOOT,		/* silence everything, then reboot */
+	CTRL_MODE,		/* MIDI builds; arg: 1 = controller mode */
+	CTRL_MIDI_DUMP,		/* MIDI builds: send the track volumes again */
 };
 
 struct ctrl_cmd {
@@ -38,7 +40,8 @@ struct ctrl_status {
 	struct raw_inputs raw;
 	uint32_t buttons;
 	uint16_t fader[SP1M_TRACKS];
-	struct scene cur;
+	struct scene cur;	/* the DAW's side in controller mode */
+	bool ctrl_mode;
 	uint8_t slot_valid;
 	bool scene_layer;
 	bool hp_present;

@@ -28,6 +28,7 @@
 #include "usb.h"
 #endif
 #if defined(CONFIG_SP1M_MIDI)
+#include "ctrl.h"
 #include "midi_in.h"
 #endif
 
@@ -44,6 +45,13 @@
 K_MSGQ_DEFINE(ctrl_q, sizeof(struct ctrl_cmd), 8, 4);
 
 static struct ui ui;
+#if defined(CONFIG_SP1M_MIDI)
+/* Controller mode; the controls drive ctrl_ui(): the mixer or the DAW's side */
+static struct ctrl ctrl;
+#define ACTIVE_UI()	ctrl_ui(&ctrl, &ui)
+#else
+#define ACTIVE_UI()	(&ui)
+#endif
 static struct fader faders[SP1M_TRACKS];
 static struct btn_debounce debounce;
 static struct ui_in in;
@@ -85,14 +93,16 @@ void control_get_status(struct ctrl_status *dst)
 
 static void publish_status(void)
 {
+	const struct ui *a = ACTIVE_UI();
 	k_spinlock_key_t key = k_spin_lock(&status_lock);
 
 	status.raw = raw;
 	status.buttons = in.buttons;
 	memcpy(status.fader, in.fader, sizeof(status.fader));
-	status.cur = ui.st.current;
+	status.cur = a->st.current;
 	status.slot_valid = ui.st.slot_valid;
-	status.scene_layer = ui.scene_layer;
+	status.scene_layer = a->scene_layer;
+	status.ctrl_mode = a != &ui;
 	status.hp_present = hp_present;
 	status.hp_known = hp_known;
 	status.speaker_on = speaker_on;
@@ -103,7 +113,7 @@ static void publish_status(void)
 	status.store_writes = store_writes;
 	status.store_errors = store_errors;
 	for (int t = 0; t < SP1M_TRACKS; t++) {
-		status.pickup_pending[t] = ui.vol_pick[t].pending;
+		status.pickup_pending[t] = a->vol_pick[t].pending;
 	}
 	k_spin_unlock(&status_lock, key);
 }
@@ -302,14 +312,22 @@ static void handle_cmd(const struct ctrl_cmd *c)
 		break;
 	case CTRL_SPEAKER:
 		speaker_forced = false;
-		ui_set_spk_mode(&ui, (enum spk_mode)c->arg, in.now_ms);
+		ui_set_spk_mode(ACTIVE_UI(), (enum spk_mode)c->arg, in.now_ms);
 		break;
 	case CTRL_SPEAKER_FORCE:
 		speaker_forced = c->arg != 0;
 		break;
 	case CTRL_MASTER:
-		ui_set_master_db(&ui, c->arg, in.now_ms);
+		ui_set_master_db(ACTIVE_UI(), c->arg, in.now_ms);
 		break;
+#if defined(CONFIG_SP1M_MIDI)
+	case CTRL_MODE:
+		ctrl_set_mode(&ctrl, &ui, &in, c->arg != 0);
+		break;
+	case CTRL_MIDI_DUMP:
+		ctrl_request_dump(&ctrl, in.now_ms);
+		break;
+#endif
 	case CTRL_REBOOT:
 		/* Mute and power the codecs down properly, then reboot */
 		quiesce();
@@ -472,7 +490,8 @@ FUNC_NORETURN void control_run(const struct persist *loaded)
 	ui_init(&ui, loaded, f0, k_uptime_get_32());
 	board_charger_enable(ui.st.charge_off == 0);
 #if defined(CONFIG_SP1M_MIDI)
-	midi_in_start(&ui, &in);
+	ctrl_init(&ctrl, CONFIG_SP1M_MIDI_CHANNEL - 1);
+	midi_in_start(&ui, &in, &ctrl);
 #endif
 
 #if defined(CONFIG_SP1M_AUDIO_OUT)
@@ -512,8 +531,11 @@ FUNC_NORETURN void control_run(const struct persist *loaded)
 		stall_stage(STALL_STAGE_UI);
 #if defined(CONFIG_SP1M_MIDI)
 		midi_in_poll();
-#endif
+		ctrl_tick(&ctrl, &ui, &in, &out);
+		midi_out_flush();
+#else
 		ui_tick(&ui, &in, &out);
+#endif
 
 		stall_stage(STALL_STAGE_MIX);
 #if defined(CONFIG_SP1M_AUDIO_OUT)
@@ -547,10 +569,10 @@ FUNC_NORETURN void control_run(const struct persist *loaded)
 			handle_cmd(&cmd);
 		}
 
-		if (ui_take_dfu(&ui)) {
+		if (ui_take_dfu(ACTIVE_UI())) {
 			enter_bootloader();
 		}
-		if (ui_take_power_off(&ui)) {
+		if (ui_take_power_off(ACTIVE_UI())) {
 			power_off();
 		}
 

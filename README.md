@@ -4,6 +4,8 @@ SP-Mix is unofficial firmware for the teenage engineering SP-1 (nRF52840) that t
 
 ## What's new
 
+**2026-10-26, not in a release yet: controller mode** (in `sp-mix-full-midi` builds). FUNCTION + tap PLAY turns the SP-1 into a control surface for the DAW: the faders send CC 20–23, a track tap mutes (CC 102–105), FUNCTION + tap solos (CC 106–109) and hold + fader pans (CC 24–27), so the DAW's faders follow after MIDI Learn and the DAW does the mixing. The SP-1 then passes the host's audio at 0 dB with only its master volume, so nothing is attenuated twice; send the DAW's mix to outputs 1–2. The four volumes go out on entering the mode, on a PLAY tap and when USB comes up. Faders have hysteresis and a rate limit, values from the DAW are never sent back, and echoes are ignored. The mode is not saved and the mixer's own state comes back when you leave it. See [docs/MIDI.md](docs/MIDI.md#controller-mode).
+
 **v0.1.10 (2026-10-26)** contains the three changes below. Download it from [Releases](https://github.com/chillingartist/sp-mix/releases); see [CHANGELOG.md](CHANGELOG.md) for the details.
 
 **2026-10-26: optional MIDI control over USB.** Flash `sp-mix-full-midi.bin` from the release (channel 1), or build with `SP1M_MIDI=1 scripts/build.sh full` (`SP1M_MIDI_CHANNEL=1..16` picks another channel), and the SP-1 shows up as a MIDI device named "SP-Mix" next to the audio device and the serial console. A DAW, an app such as AUM or a hardware controller can then set track volume (CC 20–23), balance (CC 24–27), master volume (CC 28), mute (CC 102–105) and solo (CC 106–109), and recall scenes (Program Change 0–3), with 14-bit CC pairs where the sender supports them. MIDI sets the same state as the faders and buttons, so it is saved, stored in scenes and capped like them, and a fader takes over again once it reaches the new value (the track LED blinks slowly while it waits). It is receive only: the mixer sends no MIDI. It is off by default: `sp-mix-full.bin` does not include it and is unchanged by it. Tested on hardware on macOS (track volume, takeover, 14-bit values, balance). Windows, the iPad, and mute, solo, master and scene recall over MIDI have not been tried on hardware yet. See [docs/MIDI.md](docs/MIDI.md). Thanks to [@ryanmgilmore](https://github.com/ryanmgilmore) ([#3](https://github.com/chillingartist/sp-mix/pull/3)); the USB-MIDI class and the MIDI core come from Benjamin Reece's [feldd](https://github.com/bnjreece/feldd-sp1-firmware).
@@ -42,7 +44,7 @@ Not done yet:
 - **Browser console:** `tools/sp1-console.html` talks to the serial port from Chrome or Edge (Web Serial). It shows live button and fader readings, runs a per-button test, shows the status and reset history, and copies the diagnostics with one click.
 - **Power handling:** power off and on with FUNCTION, standby while on USB power, automatic power-off when no host is connected, and battery charging that can be switched on or off.
 
-Optional, off by default: MIDI control over USB, receive only (see [docs/MIDI.md](docs/MIDI.md)); the release has it as `sp-mix-full-midi.bin`.
+Optional, off by default: MIDI control over USB, and a controller mode in which the faders and buttons drive the DAW instead (see [docs/MIDI.md](docs/MIDI.md)); the release has it as `sp-mix-full-midi.bin`.
 
 Not included: MIDI output, audio back to the host, the 3.5 mm analog input, Bluetooth and effects. Android is not a target platform.
 
