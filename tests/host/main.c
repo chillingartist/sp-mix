@@ -50,6 +50,7 @@ int test_checks;
 	X(test_ctrl_mode_switch)		\
 	X(test_ctrl_fader_sends)		\
 	X(test_ctrl_buttons)			\
+	X(test_ctrl_play_layer)		\
 	X(test_ctrl_echo)			\
 	X(test_ctrl_usb_dump)			\
 	X(test_ctrl_mixer_unchanged)

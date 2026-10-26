@@ -12,7 +12,10 @@
  *   FUNCTION + tap PLAY   controller mode on / off
  * In controller mode, besides the mixer's gestures:
  *   tap PLAY              send the four track volumes again
- *   hold PLAY + fader N   balance of track N (as holding track key N does)
+ *   hold PLAY + fader N   balance of track N, absolute, once the fader has
+ *                         passed the current balance (the track LED blinks
+ *                         until then, and is lit once it has it)
+ *   hold PLAY + tap track N   solo of track N (FUNCTION + tap still works)
  *
  * Mute and solo taps send 127 then 0, as a controller's button does, so the
  * DAW toggles on each tap; the LEDs follow the SP-1's own copy of the state,
@@ -40,6 +43,8 @@
 #define CTRL_HYST		2
 /* After USB comes up, before the volumes are sent */
 #define CTRL_DUMP_DELAY_MS	300
+/* 7-bit steps either side of the centre that count as centre (PLAY + fader) */
+#define CTRL_PAN_DETENT		2
 
 struct ctrl {
 	bool available;
@@ -63,15 +68,23 @@ struct ctrl {
 	uint32_t play_ms;
 	bool play_masked;		/* PLAY is ours, not rui's */
 
-	/* Hold PLAY + fader: balance. rui sees the faders where they were */
+	/* The PLAY layer: balance with the faders, solo with the track keys.
+	 * rui sees the faders where they were, and not those keys
+	 */
 	uint16_t prev_fader[SP1M_TRACKS];
 	uint16_t freeze[SP1M_TRACKS];
 	bool frozen;
 	uint32_t thaw_ms;
-	uint16_t pan_fader[SP1M_TRACKS];
-	int8_t pan_bal[SP1M_TRACKS];
-	bool pan_on[SP1M_TRACKS];
-	bool pan_used;			/* a fader panned during this press */
+	bool pan_armed;			/* the balance pickups are set */
+	bool pan_pending[SP1M_TRACKS];	/* fader not yet past the balance */
+	int16_t pan_side[SP1M_TRACKS];	/* fader - target when armed */
+	uint16_t pan_target[SP1M_TRACKS];
+	uint16_t pan_anchor[SP1M_TRACKS];
+	uint8_t pan7[SP1M_TRACKS];	/* balance quantizer */
+	bool pan_used;			/* a fader moved during this press */
+	uint8_t trk_masked;		/* track keys pressed under PLAY */
+	uint32_t trk_ms[SP1M_TRACKS];
+	uint32_t trk_free_ms;
 
 	uint8_t anim;			/* enum in ctrl.c */
 	uint32_t anim_ms;

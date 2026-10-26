@@ -292,26 +292,6 @@ TEST(test_ctrl_buttons)
 	slide(0, 700, 4);
 	CHECK(count(20) == 0);
 
-	/* Balance: hold PLAY and move fader 2; no volume, no resend */
-	nsent = 0;
-	hold(PLAY, 100);
-	in.buttons = PLAY;
-	slide(1, 340, 4);
-	hold(PLAY, 30);
-	hold(0, 100);
-	CHECK(count(25) >= 1);
-	CHECK(value(25) < 64);
-	for (int t = 0; t < SP1M_TRACKS; t++) {
-		CHECK(count(20 + t) == 0);
-	}
-	CHECK(c.rui.st.current.vol[1] == 500);
-	CHECK(c.rui.vol_pick[1].pending);
-	CHECK(!c.rui.scene_layer);
-	/* PLAY tapped without moving a fader: the volumes */
-	nsent = 0;
-	tap(PLAY);
-	CHECK(nsent == 4);
-
 	/* The master volume stays on the SP-1 */
 	master = out.mix.master_gain;
 	nsent = 0;
@@ -416,4 +396,100 @@ TEST(test_ctrl_mixer_unchanged)
 	CHECK(same);
 	CHECK(!c.active);
 	CHECK(c.sent == 0);
+}
+
+/* LED @t over @ms with @buttons held: seen dark and seen lit? */
+static void led_seen(int t, uint32_t buttons, uint32_t ms, bool *dark, bool *lit)
+{
+	*dark = false;
+	*lit = false;
+	in.buttons = buttons;
+	for (uint32_t i = 0; i < ms; i += UI_TICK_MS) {
+		step();
+		*dark = *dark || out.led[t] == 0;
+		*lit = *lit || out.led[t] >= 90;
+	}
+}
+
+TEST(test_ctrl_play_layer)
+{
+	bool dark, lit;
+
+	setup();
+	fn_play();
+	hold(0, 400);
+
+	/* PLAY + tap track 3: solo, a button press, no mute */
+	nsent = 0;
+	hold(PLAY, 80);
+	hold(PLAY | T(3), 80);
+	hold(PLAY, 30);
+	hold(0, 100);
+	CHECK(nsent == 2);
+	CHECK(sent[0].d1 == 108 && sent[0].d2 == 127);
+	CHECK(sent[1].d1 == 108 && sent[1].d2 == 0);
+	CHECK(c.rui.st.current.solo == 0x4);
+	CHECK(c.rui.st.current.mute == 0);
+	/* PLAY let go first: still the solo, still no mute */
+	nsent = 0;
+	hold(PLAY, 80);
+	hold(PLAY | T(3), 80);
+	hold(T(3), 30);
+	hold(0, 100);
+	CHECK(count(108) == 2);
+	CHECK(count(104) == 0);
+	CHECK(c.rui.st.current.solo == 0);
+	CHECK(c.rui.st.current.mute == 0);
+
+	/* PLAY + fader 2: nothing until the fader passes the balance (centre,
+	 * fader ~516); the track LED blinks meanwhile
+	 */
+	nsent = 0;
+	hold(PLAY, 100);
+	in.buttons = PLAY;
+	slide(1, 340, 4);
+	led_seen(1, PLAY, 600, &dark, &lit);
+	CHECK(dark && lit);
+	CHECK(count(25) == 0);
+	slide(1, 700, 4);
+	hold(PLAY, 30);
+	CHECK(count(25) >= 1);
+	CHECK(abs(value(25) - ctrl_vol7(700)) <= 1);
+	CHECK(out.led[1] == 200);
+	/* The middle is the centre, within the detent */
+	slide(1, 530, 4);
+	hold(PLAY, 30);
+	CHECK(value(25) == 64);
+	CHECK(c.rui.st.current.bal[1] == 0);
+	hold(0, 100);
+	for (int t = 0; t < SP1M_TRACKS; t++) {
+		CHECK(count(20 + t) == 0);
+	}
+	CHECK(c.rui.st.current.vol[1] == 500);
+	CHECK(!c.rui.scene_layer);
+	/* The fader picks up its volume again */
+	CHECK(c.rui.vol_pick[1].pending);
+
+	/* Loud track, balance far right: back to the centre without
+	 * touching the volume
+	 */
+	slide(0, 1000, 20);
+	hold(0, 50);
+	hold(0, 400);
+	rx(0xb0, 24, 115);
+	hold(0, 20);
+	CHECK(c.rui.st.current.bal[0] > 70);
+	nsent = 0;
+	hold(PLAY, 100);
+	in.buttons = PLAY;
+	slide(0, 530, 10);
+	hold(PLAY, 30);
+	hold(0, 100);
+	CHECK(value(24) == 64);
+	CHECK(count(20) == 0);
+	CHECK(c.rui.st.current.vol[0] == 1000);
+	CHECK(c.rui.vol_pick[0].pending);
+
+	/* No volumes sent for a PLAY press that moved faders */
+	CHECK(count(21) == 0 && count(22) == 0 && count(23) == 0);
 }

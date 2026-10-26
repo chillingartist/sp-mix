@@ -80,8 +80,8 @@ attenuated twice. Send the DAW's mix to outputs 1–2.
 | **FUNCTION + tap PLAY** | Controller mode on / off (also `mode ctrl` / `mode mixer` in the console). The playback LEDs run left to right when it comes on and right to left when it goes off. |
 | Fader 1–4 | CC 20–23 (7-bit) |
 | Tap a track button | Mute: CC 102–105, a button press (127, then 0) |
-| FUNCTION + tap a track button | Solo: CC 106–109, a button press (127, then 0) |
-| Hold PLAY + move fader N | Balance of track N: CC 24–27 (64 is centre). Holding track button N instead works too, as in the mixer. |
+| Hold PLAY + tap a track button | Solo: CC 106–109, a button press (127, then 0). FUNCTION + tap works too, as in the mixer. |
+| Hold PLAY + move fader N | Balance of track N: CC 24–27, absolute (bottom left, middle centre, top right). The fader takes over once it has passed the current balance; until then its track LED blinks, then stays lit. The volume is not touched. |
 | VOL+ / VOL− | The SP-1's master volume, as always. Not sent. |
 | Tap PLAY (no fader moved) | Send the four fader volumes again (also `midi dump`). The playback LEDs flash. |
 | Scenes | Not used. Program changes from the host are ignored. |
@@ -94,6 +94,13 @@ attenuated twice. Send the DAW's mix to outputs 1–2.
   coming up while in the mode (after 300 ms) send the four fader volumes.
   Balance, mute and solo have no position on the SP-1, so they are sent only
   when they change and the DAW keeps its own settings until then.
+- **The PLAY layer.** While PLAY is held the faders are balance controls and
+  the track buttons solo. A fader takes over the balance only after passing
+  it, so the balance never jumps and can be set wherever the volume is; the
+  middle of the travel (64 ± 2) is exact centre. The volumes stay as they
+  were, and after PLAY is let go the faders pick them up again (slow LED
+  blink). Holding a track button and moving its fader still changes the
+  balance relatively, as in the mixer.
 - **Buttons toggle in the DAW.** Every tap of a track button sends 127 and
   then 0, as a controller's button does, so a DAW that toggles on 127 (Logic's
   Learn MIDI, for one) mutes or solos on one tap and unmutes on the next. The

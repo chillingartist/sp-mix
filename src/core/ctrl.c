@@ -7,6 +7,8 @@
 #include <string.h>
 
 #include "ctrl.h"
+#include "midi/midi_hr.h"
+#include "midi_map.h"
 
 #define B(x)		BTN_BIT(BTN_##x)
 /* Outside every button bit: a chord carrying it never counts as a tap */
@@ -195,52 +197,108 @@ static void send_changes(struct ctrl *c, uint32_t now)
 	}
 }
 
+/* The fader position of a balance, and back (7-bit, with a centre detent) */
+static uint16_t bal_to_fader(int bal)
+{
+	return (uint16_t)(((uint32_t)ctrl_bal7(bal) * FADER_MAX + 63u) / 127u);
+}
+
+static int fader_to_bal(uint16_t f, uint8_t *p7)
+{
+	*p7 = vol7_hyst(f, *p7);
+	if (abs((int)*p7 - 64) <= CTRL_PAN_DETENT) {
+		return 0;
+	}
+
+	return sp1m_midi_to_balance(midi_widen7(*p7), 7);
+}
+
 /*
- * Hold PLAY + move fader N: balance of track N, relative, as holding track
- * key N does. Meanwhile rui sees the faders where they were before the press
- * (it does not see PLAY, so it does not wait for the supply to recover);
- * once the supply has recovered, they pick up the volumes again.
+ * The PLAY layer, while PLAY is held:
+ *  - fader N is the balance of track N, absolute (bottom left, middle
+ *    centre, top right), once it has passed the current balance: a pickup,
+ *    so the balance does not jump and the volume does not matter;
+ *  - tapping track key N toggles its solo.
+ * rui sees neither: the faders stay where they were before the press, and
+ * the track keys pressed under PLAY stay hidden from it until released. Once
+ * PLAY is up and the supply has recovered, the faders pick up the volumes.
  */
-static void pan_tick(struct ctrl *c, const struct ui_in *in, struct ui_in *rin,
-		     bool play, bool play_pressed, uint32_t now)
+static void play_layer(struct ctrl *c, const struct ui_in *in, struct ui_in *rin,
+		       bool play, uint32_t pressed, uint32_t released, uint32_t now)
 {
 	struct scene *s = &c->rui.st.current;
+	const uint32_t b = in->buttons & ((1u << BTN_COUNT) - 1u);
 
-	if (play && play_pressed) {
+	if (play && (pressed & B(PLAY))) {
+		c->pan_armed = false;
 		c->pan_used = false;
 		c->frozen = true;
-		for (int t = 0; t < SP1M_TRACKS; t++) {
-			c->pan_on[t] = false;
-			c->freeze[t] = c->prev_fader[t];
-			c->pan_fader[t] = in->fader[t];
+		memcpy(c->freeze, c->prev_fader, sizeof(c->freeze));
+		/* Keys rui already has are no taps for it any more */
+		if (b & BTN_TRACK_MASK) {
+			c->rui.chord |= CHORD_CANCEL;
 		}
 	}
+
+	/* Solo: track keys pressed under PLAY, a tap whenever they come up */
+	for (int t = 0; t < SP1M_TRACKS; t++) {
+		const uint32_t bit = BTN_BIT(BTN_T1 + t);
+
+		if (pressed & bit) {
+			c->trk_ms[t] = now;
+			if (play) {
+				c->trk_masked |= (uint8_t)bit;
+			}
+		}
+		if ((released & bit) && (c->trk_masked & bit)) {
+			c->trk_masked &= (uint8_t)~bit;
+			if (now - c->trk_ms[t] <= UI_TAP_MAX_MS) {
+				s->solo ^= (uint8_t)bit;
+			}
+		}
+	}
+	rin->buttons &= ~(uint32_t)c->trk_masked;
+
 	if (play) {
-		for (int t = 0; t < SP1M_TRACKS; t++) {
-			const uint16_t f = in->fader[t];
+		/* A track key loads the supply further: no balance meanwhile */
+		if (b & BTN_TRACK_MASK) {
+			c->trk_free_ms = now;
+		}
+		if (now - c->play_ms >= UI_SAG_SETTLE_MS && !(b & BTN_TRACK_MASK) &&
+		    now - c->trk_free_ms >= UI_SAG_HOLDOFF_MS) {
+			for (int t = 0; t < SP1M_TRACKS; t++) {
+				const uint16_t f = in->fader[t];
+				const int d = (int)f - (int)c->pan_target[t];
 
-			if (now - c->play_ms < UI_SAG_SETTLE_MS) {
-				/* Reading still drops with the supply: re-anchor */
-				c->pan_fader[t] = f;
-				continue;
+				if (!c->pan_armed) {
+					c->pan_anchor[t] = f;
+					c->pan_target[t] = bal_to_fader(s->bal[t]);
+					c->pan_side[t] = (int16_t)((int)f - (int)c->pan_target[t]);
+					c->pan_pending[t] = abs(c->pan_side[t]) > PICKUP_TOLERANCE;
+					c->pan7[t] = ctrl_bal7(s->bal[t]);
+					continue;
+				}
+				if (abs((int)f - (int)c->pan_anchor[t]) >= UI_BAL_ENTER) {
+					c->pan_used = true;
+				}
+				/* Taken over only once the fader has passed the
+				 * balance: no pulling down past it, unlike a volume
+				 */
+				if (c->pan_pending[t] && (abs(d) <= PICKUP_TOLERANCE ||
+							  (d > 0) != (c->pan_side[t] > 0))) {
+					c->pan_pending[t] = false;
+				}
+				if (!c->pan_pending[t]) {
+					s->bal[t] = (int8_t)fader_to_bal(f, &c->pan7[t]);
+				}
 			}
-			if (!c->pan_on[t] &&
-			    abs((int)f - (int)c->pan_fader[t]) >= UI_BAL_ENTER) {
-				c->pan_on[t] = true;
-				c->pan_used = true;
-				c->pan_fader[t] = f;
-				c->pan_bal[t] = s->bal[t];
-			}
-			if (c->pan_on[t]) {
-				int nb = c->pan_bal[t] +
-					 (int)lroundf((float)((int)f - (int)c->pan_fader[t]) *
-						      UI_BAL_PER_FADER);
-
-				s->bal[t] = (int8_t)sp1m_clampi(nb, -BALANCE_MAX, BALANCE_MAX);
-			}
+			c->pan_armed = true;
 		}
 		c->thaw_ms = now + UI_SAG_HOLDOFF_MS + 20u;
+	} else {
+		c->pan_armed = false;
 	}
+
 	if (!c->frozen) {
 		return;
 	}
@@ -292,7 +350,9 @@ static void enter(struct ctrl *c, struct ui *local, const struct ui_in *in)
 
 	c->active = true;
 	c->frozen = false;
+	c->pan_armed = false;
 	c->pan_used = false;
+	c->trk_masked = 0;
 	c->usb_prev = in->usb_configured;
 	dump(c, now);
 	c->anim = ANIM_ENTER;
@@ -321,6 +381,16 @@ static void leave(struct ctrl *c, struct ui *local, const struct ui_in *in)
 static void overlay(struct ctrl *c, struct ui_out *out, uint32_t now)
 {
 	uint8_t *pl = &out->led[SP1M_TRACKS];
+
+	/* PLAY held: blinking while a fader waits to pass its balance, lit
+	 * once it has it
+	 */
+	if (c->active && c->pan_armed) {
+		for (int t = 0; t < SP1M_TRACKS; t++) {
+			out->led[t] = !c->pan_pending[t] ? 200 :
+				      ((now / 250u) & 1u) ? 90 : 0;
+		}
+	}
 
 	if (c->anim != ANIM_NONE && now - c->anim_ms < anim_len[c->anim]) {
 		const uint32_t step = (now - c->anim_ms) / 100u % 4u;
@@ -425,7 +495,7 @@ void ctrl_tick(struct ctrl *c, struct ui *local, const struct ui_in *in,
 		rin.buttons &= ~B(PLAY);
 	}
 	take_external(c);
-	pan_tick(c, in, &rin, play, (pressed & B(PLAY)) != 0, now);
+	play_layer(c, in, &rin, play, pressed, released, now);
 	ui_tick(&c->rui, &rin, out);
 	take_physical(c, now);
 	memcpy(c->prev_fader, in->fader, sizeof(c->prev_fader));
