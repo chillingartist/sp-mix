@@ -4,15 +4,17 @@ SP-Mix is unofficial firmware for the teenage engineering SP-1 (nRF52840) that t
 
 ## What's new
 
-**2026-10-26, not in a release yet: optional MIDI control over USB.** Build with `SP1M_MIDI=1 scripts/build.sh full` (channel 1; `SP1M_MIDI_CHANNEL=1..16` picks another), and the SP-1 shows up as a MIDI device named "SP-Mix" next to the audio device and the serial console. A DAW, an app such as AUM or a hardware controller can then set track volume (CC 20–23), balance (CC 24–27), master volume (CC 28), mute (CC 102–105) and solo (CC 106–109), and recall scenes (Program Change 0–3), with 14-bit CC pairs where the sender supports them. MIDI sets the same state as the faders and buttons, so it is saved, stored in scenes and capped like them, and a fader takes over again once it reaches the new value (the track LED blinks slowly while it waits). It is receive only: the mixer sends no MIDI. It is off by default, the prebuilt `.bin` files do not include it, and without it the firmware is unchanged. Tested on hardware on macOS (track volume, takeover, 14-bit values, balance). Windows, the iPad, and mute, solo, master and scene recall over MIDI have not been tried on hardware yet. See [docs/MIDI.md](docs/MIDI.md). Thanks to [@ryanmgilmore](https://github.com/ryanmgilmore) ([#3](https://github.com/chillingartist/sp-mix/pull/3)); the USB-MIDI class and the MIDI core come from Benjamin Reece's [feldd](https://github.com/bnjreece/feldd-sp1-firmware).
+**v0.1.10 (2026-10-26)** contains the three changes below. Download it from [Releases](https://github.com/chillingartist/sp-mix/releases); see [CHANGELOG.md](CHANGELOG.md) for the details.
 
-**2026-10-20: the project is now called SP-Mix.** From the next release the SP-1 shows up on the host as "SP-Mix", the release files are `sp-mix-<variant>.bin`, and the first line of `status` starts with `sp-mix`. v0.1.0 still uses the old name, SP-1 Mixer (`sp1mixer-full.bin`); the console page reads both. Windows may keep showing the old device name until the device is uninstalled in Device Manager. To build from source, clone into the default `sp-mix` directory.
+**2026-10-26: optional MIDI control over USB.** Flash `sp-mix-full-midi.bin` from the release (channel 1), or build with `SP1M_MIDI=1 scripts/build.sh full` (`SP1M_MIDI_CHANNEL=1..16` picks another channel), and the SP-1 shows up as a MIDI device named "SP-Mix" next to the audio device and the serial console. A DAW, an app such as AUM or a hardware controller can then set track volume (CC 20–23), balance (CC 24–27), master volume (CC 28), mute (CC 102–105) and solo (CC 106–109), and recall scenes (Program Change 0–3), with 14-bit CC pairs where the sender supports them. MIDI sets the same state as the faders and buttons, so it is saved, stored in scenes and capped like them, and a fader takes over again once it reaches the new value (the track LED blinks slowly while it waits). It is receive only: the mixer sends no MIDI. It is off by default: `sp-mix-full.bin` does not include it and is unchanged by it. Tested on hardware on macOS (track volume, takeover, 14-bit values, balance). Windows, the iPad, and mute, solo, master and scene recall over MIDI have not been tried on hardware yet. See [docs/MIDI.md](docs/MIDI.md). Thanks to [@ryanmgilmore](https://github.com/ryanmgilmore) ([#3](https://github.com/chillingartist/sp-mix/pull/3)); the USB-MIDI class and the MIDI core come from Benjamin Reece's [feldd](https://github.com/bnjreece/feldd-sp1-firmware).
 
-**2026-10-20, since v0.1.0 (not in a release yet): optional settings location.** By default the settings (scenes and the last state) are stored in flash at 0xF7000–0xFEFFF. feldd keeps its profiles at the same address. If you switch an SP-1 between SP-Mix and other firmware, build with `SP1M_STORAGE=low scripts/build.sh full`. The settings then go in their own 16 KiB at 0xCA000–0xCDFFF, and neither firmware touches the other's data. Tested on hardware: a saved scene survived a reboot, and feldd's profiles were byte-identical after switching back to feldd. The default layout and the prebuilt `.bin` files are unchanged. The two layouts do not see each other's settings, so switching layouts starts from the defaults. See [Build](#build) and [CHANGELOG.md](CHANGELOG.md). Thanks to [@ryanmgilmore](https://github.com/ryanmgilmore) ([#2](https://github.com/chillingartist/sp-mix/pull/2)).
+**2026-10-20: the project is now called SP-Mix.** From v0.1.10 the SP-1 shows up on the host as "SP-Mix", the release files are `sp-mix-<variant>.bin`, and the first line of `status` starts with `sp-mix`. v0.1.0 still uses the old name, SP-1 Mixer (`sp1mixer-full.bin`); the console page reads both. Windows may keep showing the old device name until the device is uninstalled in Device Manager. To build from source, clone into the default `sp-mix` directory.
+
+**2026-10-20: optional settings location.** By default the settings (scenes and the last state) are stored in flash at 0xF7000–0xFEFFF. feldd keeps its profiles at the same address. If you switch an SP-1 between SP-Mix and other firmware, build with `SP1M_STORAGE=low scripts/build.sh full`. The settings then go in their own 16 KiB at 0xCA000–0xCDFFF, and neither firmware touches the other's data. Tested on hardware: a saved scene survived a reboot, and feldd's profiles were byte-identical after switching back to feldd. The default layout and the release files are unchanged. The two layouts do not see each other's settings, so switching layouts starts from the defaults. See [Build](#build) and [CHANGELOG.md](CHANGELOG.md). Thanks to [@ryanmgilmore](https://github.com/ryanmgilmore) ([#2](https://github.com/chillingartist/sp-mix/pull/2)).
 
 ## Status
 
-Version 0.1.0 is the first public release (see [CHANGELOG.md](CHANGELOG.md)). The firmware runs on the SP-1 with Windows and iPad hosts, but long-run testing is not finished.
+The current release is v0.1.10 (see [CHANGELOG.md](CHANGELOG.md)); v0.1.0 was the first public release. The firmware runs on the SP-1 with Windows and iPad hosts, but long-run testing is not finished.
 
 Verified on hardware:
 
@@ -40,7 +42,7 @@ Not done yet:
 - **Browser console:** `tools/sp1-console.html` talks to the serial port from Chrome or Edge (Web Serial). It shows live button and fader readings, runs a per-button test, shows the status and reset history, and copies the diagnostics with one click.
 - **Power handling:** power off and on with FUNCTION, standby while on USB power, automatic power-off when no host is connected, and battery charging that can be switched on or off.
 
-Optional, off by default: MIDI control over USB, receive only (see [docs/MIDI.md](docs/MIDI.md)).
+Optional, off by default: MIDI control over USB, receive only (see [docs/MIDI.md](docs/MIDI.md)); the release has it as `sp-mix-full-midi.bin`.
 
 Not included: MIDI output, audio back to the host, the 3.5 mm analog input, Bluetooth and effects. Android is not a target platform.
 
@@ -61,7 +63,7 @@ Not included: MIDI output, audio back to the host, the 3.5 mm analog input, Blue
 
 ### Install the firmware
 
-1. Download `sp-mix-full.bin` from the [Releases](https://github.com/chillingartist/sp-mix/releases) page (in v0.1.0 the file is called `sp1mixer-full.bin`).
+1. Download `sp-mix-full.bin` from the [Releases](https://github.com/chillingartist/sp-mix/releases) page (in v0.1.0 the file is called `sp1mixer-full.bin`). For MIDI control, take `sp-mix-full-midi.bin` instead (see [docs/MIDI.md](docs/MIDI.md)).
 2. Put the SP-1 into its bootloader by holding **Track 1 + Track 4** while you plug in the USB cable. Keep holding until the updater sees the device. This is a feature of the SP-1's bootloader and works with any firmware installed.
 3. Write the `.bin` file with the [Solderless web updater](https://solderless.engineering), a web tool that flashes the SP-1 through its bootloader, and follow its instructions.
 4. The SP-1 restarts into the mixer. The LEDs light up briefly, then the track LEDs stay dimly lit. The host now sees a USB audio device with 8 output channels and a serial port.
@@ -218,7 +220,7 @@ scripts/build.sh m1      # + 8-channel USB audio, received and counted but not p
 scripts/build.sh full    # complete mixer (the default)
 ```
 
-The output is `build-<variant>/zephyr/zephyr.bin`, which you flash through the bootloader as [above](#install-the-firmware). The release file `sp-mix-full.bin` is the `full` build. Arguments after the variant name go to `west build`. The build embeds the commit (`git describe --always --dirty`), which `status` shows as `fw`.
+The output is `build-<variant>/zephyr/zephyr.bin` (`build-full-midi` with `SP1M_MIDI=1`, and `-low` appended with `SP1M_STORAGE=low`), which you flash through the bootloader as [above](#install-the-firmware). The release file `sp-mix-full.bin` is the `full` build, and `sp-mix-full-midi.bin` is `SP1M_MIDI=1 scripts/build.sh full`. Arguments after the variant name go to `west build`. The build embeds the commit (`git describe --always --dirty`), which `status` shows as `fw`.
 
 The application is linked at 0x20000, above the bootloader. `boards/teenage_engineering/sp1/board.cmake` also sets up J-Link, pyOCD and nrfjprog runners, but only for units with SWD access.
 

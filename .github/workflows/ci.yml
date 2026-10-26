@@ -1,12 +1,14 @@
 # SPDX-License-Identifier: MIT
 #
 # host-tests: unit tests of the portable core (src/core) on the build host.
-# firmware:   builds the m0, m1 and full variants with Zephyr v4.3.1 and
-#             uploads zephyr.bin and zephyr.elf for each.
+# firmware:   builds the m0, m1, full and full-midi (full with MIDI control)
+#             variants with Zephyr v4.3.1 and uploads zephyr.bin and
+#             zephyr.elf for each.
 # release:    on a v* tag, or when run by hand with a version, creates a
-#             draft GitHub release with the firmware of all three variants
-#             and that version's CHANGELOG section. A release run by hand
-#             creates its tag on the built commit when it is published.
+#             draft GitHub release with the firmware of all variants and
+#             that version's CHANGELOG section. A release run by hand
+#             creates its tag on the built commit when it is published, so
+#             its firmware is built with that version as its 'fw' string.
 
 name: CI
 
@@ -50,7 +52,7 @@ jobs:
         run: cmake --build build-host
 
       - name: Run
-        run: ./build-host/sp1m_tests
+        run: ctest --test-dir build-host --output-on-failure
 
   firmware:
     name: firmware (${{ matrix.variant }})
@@ -62,7 +64,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [m0, m1, full]
+        include:
+          - { variant: m0, target: m0 }
+          - { variant: m1, target: m1 }
+          - { variant: full, target: full }
+          - { variant: full-midi, target: full, midi: '1' }
     defaults:
       run:
         shell: bash
@@ -89,7 +95,11 @@ jobs:
         run: sp-mix/scripts/apply-zephyr-patches.sh
 
       - name: Build ${{ matrix.variant }}
-        run: sp-mix/scripts/build.sh ${{ matrix.variant }}
+        env:
+          SP1M_MIDI: ${{ matrix.midi }}
+          # A release run by hand: the tag does not exist yet
+          SP1M_GIT: ${{ inputs.version }}
+        run: sp-mix/scripts/build.sh ${{ matrix.target }}
 
       - name: Upload firmware
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
@@ -124,7 +134,7 @@ jobs:
           TAG: ${{ inputs.version || github.ref_name }}
         run: |
           mkdir dist
-          for v in m0 m1 full; do
+          for v in m0 m1 full full-midi; do
             cp "artifacts/sp-mix-$v/zephyr.bin" "dist/sp-mix-$v.bin"
             cp "artifacts/sp-mix-$v/zephyr.elf" "dist/sp-mix-$v.elf"
           done

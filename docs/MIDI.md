@@ -11,6 +11,9 @@ SP1M_MIDI=1 scripts/build.sh full                        # channel 1
 SP1M_MIDI=1 SP1M_MIDI_CHANNEL=5 scripts/build.sh full
 ```
 
+Releases from v0.1.10 on also have this build ready made, on channel 1:
+`sp-mix-full-midi.bin`.
+
 The SP-1 then shows up as a MIDI device named "SP-Mix" beside the audio
 device and the serial console.
 

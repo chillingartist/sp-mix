@@ -6,14 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-10-26
+
+Release files: `sp-mix-full.bin` is the mixer, as in 0.1.0. `sp-mix-full-midi.bin` is the same with MIDI control over USB on channel 1 (see `docs/MIDI.md`). `sp-mix-m0.bin` and `sp-mix-m1.bin` are bring-up builds. Settings saved by 0.1.0 should carry over: their format has not changed, and flashing leaves the settings area alone.
+
 ### Added
 
 - `SP1M_STORAGE=low scripts/build.sh` (and `boards/teenage_engineering/sp1/sp1-storage-low.overlay`): an optional flash layout that keeps the settings in their own 16 KiB at 0xCA000-0xCDFFF instead of the default 0xF7000-0xFEFFF, which other SP-1 firmware also uses. The default layout is unchanged.
-- Optional MIDI control over USB (`CONFIG_SP1M_MIDI`, off by default; receive only): track volume, balance, mute and solo, master volume and scene recall from a DAW, app or controller, on one channel, with 14-bit CC pairs. MIDI sets the same state as the controls, so it is saved, recalled and capped like them. See `docs/MIDI.md`. With the option off, the firmware image is unchanged.
+- Optional MIDI control over USB (`CONFIG_SP1M_MIDI`, off by default; receive only): track volume, balance, mute and solo, master volume and scene recall from a DAW, app or controller, on one channel, with 14-bit CC pairs. MIDI sets the same state as the controls, so it is saved, recalled and capped like them. See `docs/MIDI.md`. With the option off, the firmware image is unchanged. The release has it as `sp-mix-full-midi.bin`.
 
 ### Changed
 
 - The project is now called SP-Mix (was SP-1 Mixer). The USB product name is "SP-Mix", the release files are `sp-mix-<variant>.bin` (was `sp1mixer-<variant>.bin`), the first line of `status` starts with `sp-mix` (the console page still reads the old `sp1mixer`), the test file is `sp-mix-test.wav`, and the west workspace directory is `sp-mix`, the default name of a clone.
+- CI runs every host test suite (`ctest`), including the MIDI suites, and builds `full-midi`. A release made by hand puts its version in the firmware's `fw` string.
+
+### Fixed
+
+- `scripts/build.sh`: `SP1M_MIDI` and `SP1M_STORAGE=low` builds get their own build directories (`build-full-midi`, `build-full-low`, ...). Before, an option stayed in the cached build after it was dropped, so switching back silently kept it. If you built with one of these options before, delete `build-full` once.
+
+### Known issues
+
+- MIDI control has been tried on hardware on macOS only (track volume, takeover, 14-bit values, balance). Windows, the iPad, and mute, solo, master and scene recall over MIDI have not been tried on hardware.
+- macOS enumerates the SP-1 (audio device, serial port, MIDI port), but playback on a Mac has not been checked.
+- The other known issues of 0.1.0 still apply, except that flashing is now known to leave the settings in place.
 
 ## [0.1.0] - 2026-10-15
 
