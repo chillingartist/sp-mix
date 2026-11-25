@@ -6,7 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-Settings from 0.1.11-beta and 0.1.10 carry over. The new settings (controller mode, button style) are saved in a record of their own, so flashing an older release back keeps the mix and the scenes.
+## [0.1.12-beta] - 2026-11-25
+
+Pre-release, controller mode refined. `sp-mix-full-midi.bin` has controller mode; `sp-mix-full.bin` (the mixer without MIDI) works as in 0.1.10. Settings from 0.1.11-beta and 0.1.10 carry over. The new settings (controller mode, button style) are saved in a record of their own, so flashing an older release back keeps the mix and the scenes.
 
 ### Added
 
@@ -21,6 +23,11 @@ Settings from 0.1.11-beta and 0.1.10 carry over. The new settings (controller mo
 ### Fixed
 
 - Master volume, speaker mode and LED mode changed in controller mode were lost when the SP-1 was switched off without leaving controller mode first. They are now saved as they change.
+
+### Known issues
+
+- Controller mode has been tested on an iPad with Logic Pro and with Reaper. Other DAWs (Ableton Live, Cubase, ...) have not been tried.
+- The known issues of 0.1.10 still apply.
 
 ## [0.1.11-beta] - 2026-10-26
 
