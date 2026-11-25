@@ -462,9 +462,9 @@ static void print_status_lines(void)
 
 		midi_in_get_stats(&m);
 		outf("midi pkts %u msgs %u applied %u dropped %u ignored %u "
-		     "sent %u lost %u\r\n",
+		     "sent %u lost %u buttons %s\r\n",
 		     m.packets, m.messages, m.applied, m.dropped, m.ignored,
-		     m.sent, m.overflow);
+		     m.sent, m.overflow, c.btn_onoff ? "onoff" : "toggle");
 	}
 #endif
 	outf("peak dBFS");
@@ -651,10 +651,16 @@ static void cmd_mode(struct cli *c, int argc, char **argv)
 
 static void cmd_midi(struct cli *c, int argc, char **argv)
 {
-	if (strcmp(argv[1], "dump") == 0) {
+	if (strcmp(argv[1], "dump") == 0 && argc == 2) {
 		post(CTRL_MIDI_DUMP, 0);
+	} else if (strcmp(argv[1], "buttons") == 0 && argc == 3 &&
+		   strcmp(argv[2], "toggle") == 0) {
+		post(CTRL_BTN_STYLE, 0);
+	} else if (strcmp(argv[1], "buttons") == 0 && argc == 3 &&
+		   strcmp(argv[2], "onoff") == 0) {
+		post(CTRL_BTN_STYLE, 1);
 	} else {
-		out(NULL, "error: dump\r\n");
+		out(NULL, "error: dump or buttons toggle|onoff\r\n");
 	}
 }
 #endif
@@ -739,8 +745,8 @@ static const struct cli_cmd cmds[] = {
 #if defined(CONFIG_SP1M_MIDI)
 	{ "mode", "mixer|ctrl  (ctrl: faders and buttons send MIDI to the DAW)", 1, 1,
 	  cmd_mode },
-	{ "midi", "dump  (controller mode: send the track volumes again)", 1, 1,
-	  cmd_midi },
+	{ "midi", "dump | buttons toggle|onoff  (dump: send the track volumes "
+	  "again)", 1, 2, cmd_midi },
 #endif
 #if defined(CONFIG_SP1M_AUDIO_OUT)
 	{ "codec", "[cs <reg hex> | tas <page hex> <reg hex>]", 0, 3, cmd_codec },

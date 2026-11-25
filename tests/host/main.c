@@ -31,6 +31,7 @@ int test_checks;
 	X(test_fader_filter)			\
 	X(test_fader_taper_and_pickup)		\
 	X(test_scene_roundtrip)			\
+	X(test_scene_midi_record)		\
 	X(test_ui_mute_solo)			\
 	X(test_ui_balance)			\
 	X(test_ui_supply_sag)			\
@@ -53,7 +54,10 @@ int test_checks;
 	X(test_ctrl_play_layer)		\
 	X(test_ctrl_echo)			\
 	X(test_ctrl_usb_dump)			\
-	X(test_ctrl_mixer_unchanged)
+	X(test_ctrl_mixer_unchanged)		\
+	X(test_ctrl_onoff_buttons)		\
+	X(test_ctrl_play_key_sag)		\
+	X(test_ctrl_saved_settings)
 
 #define DECLARE(fn) void fn(void);
 TESTS(DECLARE)

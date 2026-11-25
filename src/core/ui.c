@@ -192,6 +192,24 @@ void ui_set_led_mode(struct ui *u, enum led_mode mode, uint32_t now_ms)
 	}
 }
 
+static void set_setting(struct ui *u, uint8_t *field, uint8_t v, uint32_t now_ms)
+{
+	if (*field != v) {
+		*field = v;
+		mark_dirty(u, now_ms, true);
+	}
+}
+
+void ui_set_ctrl_mode(struct ui *u, bool on, uint32_t now_ms)
+{
+	set_setting(u, &u->st.ctrl_mode, on ? 1 : 0, now_ms);
+}
+
+void ui_set_btn_onoff(struct ui *u, bool on, uint32_t now_ms)
+{
+	set_setting(u, &u->st.btn_onoff, on ? 1 : 0, now_ms);
+}
+
 void ui_resume(struct ui *u, const struct ui_in *in)
 {
 	const uint32_t b = in->buttons & ((1u << BTN_COUNT) - 1u);

@@ -7,7 +7,7 @@
  * mixer, and its changes go out as the messages docs/MIDI.md lists. The
  * SP-1 then passes the host's audio at 0 dB, with only the master volume
  * applied. The mixer's own state stays as it was and comes back when the
- * mode is left. The mode is not saved: the SP-1 always starts as the mixer.
+ * mode is left. The mode is saved: the SP-1 starts in the mode it was in.
  *
  *   FUNCTION + tap PLAY   controller mode on / off
  * In controller mode, besides the mixer's gestures:
@@ -16,10 +16,15 @@
  *                         passed the current balance (the track LED blinks
  *                         until then, and is lit once it has it)
  *   hold PLAY + tap track N   solo of track N (FUNCTION + tap still works)
+ *   hold PLAY + tap BACK  buttons toggle: a tap sends 127, then 0 (saved)
+ *   hold PLAY + tap FWD   buttons on/off: 127 when on, 0 when off (saved)
  *
- * Mute and solo taps send 127 then 0, as a controller's button does, so the
- * DAW toggles on each tap; the LEDs follow the SP-1's own copy of the state,
- * or the DAW's when it sends its state back.
+ * With toggle buttons each mute and solo tap sends 127 then 0, as a
+ * controller's button does, so a DAW that toggles on 127 flips on each tap;
+ * with on/off buttons they send the new state, as the mixer reads it. The
+ * LEDs follow the SP-1's own copy of the state, or the DAW's when it sends
+ * its state back. Settings changed in controller mode (master volume,
+ * speaker and LED mode) are the mixer's too and are saved with it.
  *
  * Loops: a value that came in over MIDI is never sent back, and what comes
  * in for a control within CTRL_ECHO_MS of it sending is taken as its echo
@@ -45,6 +50,8 @@
 #define CTRL_DUMP_DELAY_MS	300
 /* 7-bit steps either side of the centre that count as centre (PLAY + fader) */
 #define CTRL_PAN_DETENT		2
+/* How long the playback LEDs show the button style after PLAY + BACK/FWD */
+#define CTRL_STYLE_SHOW_MS	1000
 
 struct ctrl {
 	bool available;
@@ -85,6 +92,10 @@ struct ctrl {
 	uint8_t trk_masked;		/* track keys pressed under PLAY */
 	uint32_t trk_ms[SP1M_TRACKS];
 	uint32_t trk_free_ms;
+	uint32_t nav_masked;		/* BACK, FWD pressed under PLAY */
+	uint32_t nav_ms[2];
+	int8_t style_req;		/* -1, or 1 = on/off buttons, 0 = toggle */
+	bool style_shown;		/* the style the LEDs show */
 
 	uint8_t anim;			/* enum in ctrl.c */
 	uint32_t anim_ms;

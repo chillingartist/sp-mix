@@ -161,6 +161,11 @@ void ui_ext_mute(struct ui *u, int track, bool on, uint32_t now_ms);
 void ui_ext_solo(struct ui *u, int track, bool on, uint32_t now_ms);
 void ui_set_charge_off(struct ui *u, bool off, uint32_t now_ms);
 void ui_set_led_mode(struct ui *u, enum led_mode mode, uint32_t now_ms);
+/* MIDI settings, saved with the rest (struct persist): controller mode on
+ * at the next start, and the button style of controller mode
+ */
+void ui_set_ctrl_mode(struct ui *u, bool on, uint32_t now_ms);
+void ui_set_btn_onoff(struct ui *u, bool on, uint32_t now_ms);
 
 /*
  * Continue after another UI instance had the controls (controller mode):

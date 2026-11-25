@@ -29,6 +29,7 @@ enum ctrl_cmd_type {
 	CTRL_REBOOT,		/* silence everything, then reboot */
 	CTRL_MODE,		/* MIDI builds; arg: 1 = controller mode */
 	CTRL_MIDI_DUMP,		/* MIDI builds: send the track volumes again */
+	CTRL_BTN_STYLE,		/* MIDI builds; arg: 1 = on/off buttons, 0 = toggle */
 };
 
 struct ctrl_cmd {
@@ -42,6 +43,7 @@ struct ctrl_status {
 	uint16_t fader[SP1M_TRACKS];
 	struct scene cur;	/* the DAW's side in controller mode */
 	bool ctrl_mode;
+	bool btn_onoff;		/* controller mode buttons send on/off */
 	uint8_t slot_valid;
 	bool scene_layer;
 	bool hp_present;

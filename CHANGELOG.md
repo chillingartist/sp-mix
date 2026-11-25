@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+Settings from 0.1.11-beta and 0.1.10 carry over. The new settings (controller mode, button style) are saved in a record of their own, so flashing an older release back keeps the mix and the scenes.
+
+### Added
+
+- Controller mode button style: **toggle** (127, then 0 per tap, as before; the default) or **on/off** (127 when on, 0 when off). In controller mode, hold PLAY and tap BACK for toggle or FWD for on/off; playback LEDs 1–2 or 3–4 light for a second. Also `midi buttons toggle|onoff` in the console. Saved. With on/off buttons, a recording of mute and solo plays back to the mixer.
+- The `midi` line of `status` shows the button style.
+
+### Changed
+
+- Controller mode is saved: the SP-1 starts in the mode it was switched off in.
+- In controller mode, any other key held with PLAY (BACK, FWD, VOL) now pauses the PLAY + fader balance as a track key does, since it loads the supply the faders share.
+
+### Fixed
+
+- Master volume, speaker mode and LED mode changed in controller mode were lost when the SP-1 was switched off without leaving controller mode first. They are now saved as they change.
+
 ## [0.1.11-beta] - 2026-10-26
 
 Pre-release. `sp-mix-full-midi.bin` has controller mode; `sp-mix-full.bin` (the mixer without MIDI) works as in 0.1.10. Settings from 0.1.10 carry over. How to use it: [Controller mode (beta)](https://github.com/chillingartist/sp-mix#controller-mode-beta) in the README.

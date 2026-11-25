@@ -18,6 +18,17 @@
 
 _Static_assert(ENCODED_BYTES <= PERSIST_ENCODED_MAX, "persist blob too big");
 
+/* The MIDI settings record: a later version may append bytes, which this
+ * one skips
+ */
+#define MIDI_MAGIC1		'm'
+#define MIDI_VERSION		1
+#define MIDI_PAYLOAD_BYTES	2
+#define MIDI_ENCODED_BYTES	(HEADER_BYTES + MIDI_PAYLOAD_BYTES + 2)
+
+_Static_assert(MIDI_ENCODED_BYTES <= PERSIST_MIDI_ENCODED_MAX,
+	       "MIDI settings blob too big");
+
 void scene_default(struct scene *s)
 {
 	for (int t = 0; t < SP1M_TRACKS; t++) {
@@ -169,6 +180,54 @@ bool persist_decode(struct persist *p, const uint8_t *buf, size_t len)
 	tmp.charge_off = *i++ ? 1 : 0;
 
 	*p = tmp;
+
+	return true;
+}
+
+size_t persist_encode_midi(const struct persist *p, uint8_t *buf, size_t len)
+{
+	uint8_t *o = buf;
+	uint16_t crc;
+
+	if (len < MIDI_ENCODED_BYTES) {
+		return 0;
+	}
+
+	*o++ = MAGIC0;
+	*o++ = MIDI_MAGIC1;
+	*o++ = MIDI_VERSION;
+	*o++ = MIDI_PAYLOAD_BYTES;
+	*o++ = p->ctrl_mode;
+	*o++ = p->btn_onoff;
+
+	crc = crc16_ccitt(0xffff, buf, (size_t)(o - buf));
+	*o++ = (uint8_t)(crc & 0xff);
+	*o++ = (uint8_t)(crc >> 8);
+
+	return (size_t)(o - buf);
+}
+
+bool persist_decode_midi(struct persist *p, const uint8_t *buf, size_t len)
+{
+	size_t payload;
+	uint16_t crc;
+
+	if (len < MIDI_ENCODED_BYTES || buf[0] != MAGIC0 || buf[1] != MIDI_MAGIC1 ||
+	    buf[2] != MIDI_VERSION || buf[3] < MIDI_PAYLOAD_BYTES) {
+		return false;
+	}
+	payload = buf[3];
+	if (len != HEADER_BYTES + payload + 2) {
+		return false;
+	}
+
+	crc = crc16_ccitt(0xffff, buf, len - 2);
+	if ((buf[len - 2] | (buf[len - 1] << 8)) != crc) {
+		return false;
+	}
+
+	p->ctrl_mode = buf[4] ? 1 : 0;
+	p->btn_onoff = buf[5] ? 1 : 0;
 
 	return true;
 }

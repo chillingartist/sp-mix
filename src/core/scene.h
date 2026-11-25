@@ -39,9 +39,20 @@ struct persist {
 	uint8_t slot_valid;		/* bit N = slot N holds a saved scene */
 	uint8_t led_mode;
 	uint8_t charge_off;
+
+	/*
+	 * MIDI settings (MIDI builds). They go in a record of their own
+	 * (persist_encode_midi), so firmware without them still reads the
+	 * one above. 0 everywhere means the defaults.
+	 */
+	uint8_t ctrl_mode;		/* controller mode was on */
+	uint8_t btn_onoff;		/* controller mode buttons: 1 = on/off,
+					 * 0 = toggle (127, then 0)
+					 */
 };
 
 #define PERSIST_ENCODED_MAX	128
+#define PERSIST_MIDI_ENCODED_MAX	16
 
 void scene_default(struct scene *s);
 void scene_sanitize(struct scene *s);
@@ -54,7 +65,13 @@ uint16_t crc16_ccitt(uint16_t crc, const uint8_t *data, size_t len);
 /* Returns the encoded length, or 0 if @len is too small. */
 size_t persist_encode(const struct persist *p, uint8_t *buf, size_t len);
 
-/* Returns false (and leaves @p untouched) for anything not valid. */
+/* Returns false (and leaves @p untouched) for anything not valid. The MIDI
+ * settings come out as their defaults.
+ */
 bool persist_decode(struct persist *p, const uint8_t *buf, size_t len);
+
+/* The MIDI settings alone, as above. Decoding sets only those fields. */
+size_t persist_encode_midi(const struct persist *p, uint8_t *buf, size_t len);
+bool persist_decode_midi(struct persist *p, const uint8_t *buf, size_t len);
 
 #endif /* SP1M_SCENE_H_ */

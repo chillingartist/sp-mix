@@ -82,17 +82,24 @@ attenuated twice. Send the DAW's mix to outputs 1–2.
 | --- | --- |
 | **FUNCTION + tap PLAY** | Controller mode on / off (also `mode ctrl` / `mode mixer` in the console). The playback LEDs run left to right when it comes on and right to left when it goes off. |
 | Fader 1–4 | CC 20–23 (7-bit) |
-| Tap a track button | Mute: CC 102–105, a button press (127, then 0) |
-| Hold PLAY + tap a track button | Solo: CC 106–109, a button press (127, then 0). FUNCTION + tap works too, as in the mixer. |
+| Tap a track button | Mute: CC 102–105, as the button style says (below) |
+| Hold PLAY + tap a track button | Solo: CC 106–109, as the button style says. FUNCTION + tap works too, as in the mixer. |
+| Hold PLAY + tap BACK | Button style **toggle** (the default): every tap sends 127, then 0. Playback LEDs 1–2 light for a second. Saved. |
+| Hold PLAY + tap FWD | Button style **on/off**: a tap sends the new state, 127 on or 0 off. Playback LEDs 3–4 light for a second. Saved. |
 | Hold PLAY + move fader N | Balance of track N: CC 24–27, absolute (bottom left, middle centre, top right). The fader takes over once it has passed the current balance; until then its track LED blinks, then stays lit. The volume is not touched. |
 | VOL+ / VOL− | The SP-1's master volume, as always. Not sent. |
 | Tap PLAY (no fader moved) | Send the four fader volumes again (also `midi dump`). The playback LEDs flash. |
 | Scenes | Not used. Program changes from the host are ignored. |
 
-- **The mode is not saved.** The SP-1 always starts as the mixer. The mixer's
-  own state (volumes, mute, solo, balance, scenes) stays as it was and comes
-  back when the mode is left; the faders then pick up the mixer's volumes.
-  The master volume, the speaker mode and the LED mode carry over both ways.
+- **The mode is saved** (from v0.1.12-beta): the SP-1 starts in the mode it
+  was switched off in, and a start in controller mode shows the same LED run
+  as entering it. The mixer's own state (volumes, mute, solo, balance,
+  scenes) stays as it was and comes back when the mode is left; the faders
+  then pick up the mixer's volumes. The master volume, the speaker mode and
+  the LED mode are shared by both modes and saved as they are changed, in
+  either mode. The mode and the button style are saved in a record of their
+  own beside the mixer's settings, so older firmware flashed back keeps the
+  mix and the scenes and simply ignores them.
 - **The DAW lines up at once.** Entering the mode, tapping PLAY, and USB
   coming up while in the mode (after 300 ms) send the four fader volumes.
   Balance, mute and solo have no position on the SP-1, so they are sent only
@@ -104,11 +111,16 @@ attenuated twice. Send the DAW's mix to outputs 1–2.
   were, and after PLAY is let go the faders pick them up again (slow LED
   blink). Holding a track button and moving its fader still changes the
   balance relatively, as in the mixer.
-- **Buttons toggle in the DAW.** Every tap of a track button sends 127 and
-  then 0, as a controller's button does, so a DAW that toggles on 127 (Logic's
-  Learn MIDI, for one) mutes or solos on one tap and unmutes on the next. The
-  track LEDs follow the SP-1's own copy of the state, or the DAW's state when
-  the DAW sends it back.
+- **Button style.** With **toggle** buttons (the default) every tap of a
+  track button sends 127 and then 0, as a controller's button does, so a DAW
+  that toggles on 127 (Logic's Learn MIDI, for one) mutes or solos on one tap
+  and unmutes on the next. With **on/off** buttons a tap sends the new state,
+  127 for on and 0 for off, for a DAW that reads the value as the state, and
+  what the DAW records then plays back to the mixer as mute and solo. Pick
+  the style with PLAY + BACK (toggle) or PLAY + FWD (on/off) in controller
+  mode, or `midi buttons toggle|onoff` in the console; the `midi` line of
+  `status` shows it. The track LEDs follow the SP-1's own copy of the state,
+  or the DAW's state when the DAW sends it back.
 - **No flooding.** A fader's value changes only once it is 2 fader units past
   a 7-bit step, and each fader and balance sends at most every 10 ms (the
   latest value).

@@ -103,6 +103,9 @@ static void publish_status(void)
 	status.slot_valid = ui.st.slot_valid;
 	status.scene_layer = a->scene_layer;
 	status.ctrl_mode = a != &ui;
+#if defined(CONFIG_SP1M_MIDI)
+	status.btn_onoff = ui.st.btn_onoff != 0;
+#endif
 	status.hp_present = hp_present;
 	status.hp_known = hp_known;
 	status.speaker_on = speaker_on;
@@ -327,6 +330,9 @@ static void handle_cmd(const struct ctrl_cmd *c)
 	case CTRL_MIDI_DUMP:
 		ctrl_request_dump(&ctrl, in.now_ms);
 		break;
+	case CTRL_BTN_STYLE:
+		ui_set_btn_onoff(&ui, c->arg != 0, in.now_ms);
+		break;
 #endif
 	case CTRL_REBOOT:
 		/* Mute and power the codecs down properly, then reboot */
@@ -492,6 +498,11 @@ FUNC_NORETURN void control_run(const struct persist *loaded)
 #if defined(CONFIG_SP1M_MIDI)
 	ctrl_init(&ctrl, CONFIG_SP1M_MIDI_CHANNEL - 1);
 	midi_in_start(&ui, &in, &ctrl);
+	/* Start in the mode the SP-1 was left in */
+	if (ui.st.ctrl_mode) {
+		in.now_ms = k_uptime_get_32();
+		ctrl_set_mode(&ctrl, &ui, &in, true);
+	}
 #endif
 
 #if defined(CONFIG_SP1M_AUDIO_OUT)

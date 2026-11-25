@@ -143,7 +143,7 @@ The SP-1 appears as one 8-channel playback device with a 7.1 channel layout. The
 
 In controller mode the SP-1 is a control surface for your DAW. The faders and buttons send MIDI to the DAW, the DAW's own faders, mute, solo and pan follow, and the DAW does the mixing. The SP-1 stays your audio interface: the DAW's mix plays from its headphone jack or speaker at 0 dB, with only the SP-1's master volume applied, so nothing is turned down twice. One USB cable carries both the audio and the control.
 
-It is in `sp-mix-full-midi.bin` from the [v0.1.11-beta pre-release](https://github.com/chillingartist/sp-mix/releases). It has been tested on an iPad with Logic Pro; other DAWs and hosts have not been tried yet. The SP-1 always starts as the mixer, and the mixer works exactly as before.
+It is in `sp-mix-full-midi.bin` from the [v0.1.11-beta pre-release](https://github.com/chillingartist/sp-mix/releases). It has been tested on an iPad with Logic Pro; other DAWs and hosts have not been tried yet. The mixer works exactly as before. From v0.1.12-beta the SP-1 starts in the mode it was switched off in, and the mute and solo buttons can send toggle or on/off messages.
 
 ### Set it up
 
@@ -151,7 +151,7 @@ It is in `sp-mix-full-midi.bin` from the [v0.1.11-beta pre-release](https://gith
 2. **Route the audio:** in the DAW, send the master (stereo) output to outputs 1–2 of the SP-Mix audio device.
 3. **Turn the SP-1's volume down** with VOL−. In controller mode the SP-1 no longer turns tracks down itself, so the first notes can be louder than in the mixer.
 4. **Enter controller mode:** hold FUNCTION and tap PLAY. The playback LEDs run from left to right, and in meter mode the first playback LED stays dimly lit for as long as the mode is on. The SP-1 sends the four fader positions at once.
-5. **Map the controls with MIDI Learn.** In Logic Pro for iPad: open Learn MIDI, move or press the control on the SP-1, then touch the control in Logic it should drive; repeat for each one. Map faders 1–4 to the volumes of four tracks (or buses), the track buttons to their mutes, PLAY + track buttons to their solos and PLAY + faders to their pans. If the DAW asks how a button behaves, choose toggle.
+5. **Map the controls with MIDI Learn.** In Logic Pro for iPad: open Learn MIDI, move or press the control on the SP-1, then touch the control in Logic it should drive; repeat for each one. Map faders 1–4 to the volumes of four tracks (or buses), the track buttons to their mutes, PLAY + track buttons to their solos and PLAY + faders to their pans. If the DAW asks how a button behaves, choose toggle. If a mute does not follow your taps (it needs two taps, or flips back at once), switch the SP-1's [button style](#button-style).
 6. **Line the DAW up again** at any time with a tap on PLAY (the playback LEDs flash).
 7. **Leave controller mode** with FUNCTION + tap PLAY again (the LEDs run from right to left). The mixer comes back as you left it, and its faders pick up their volumes (slow LED blink until you reach them).
 
@@ -160,8 +160,10 @@ It is in `sp-mix-full-midi.bin` from the [v0.1.11-beta pre-release](https://gith
 | Control | What it does | MIDI (channel 1) |
 | --- | --- | --- |
 | Fader 1–4 | Volume of the DAW track mapped to it | CC 20–23 |
-| Tap a track button | Mute on / off in the DAW | CC 102–105: 127, then 0 |
-| Hold PLAY + tap a track button | Solo on / off in the DAW | CC 106–109: 127, then 0 |
+| Tap a track button | Mute on / off in the DAW | CC 102–105: 127, then 0 (toggle style) or 127 / 0 (on/off style) |
+| Hold PLAY + tap a track button | Solo on / off in the DAW | CC 106–109, as for mute |
+| Hold PLAY + tap BACK | Button style: toggle (playback LEDs 1–2 light) | – |
+| Hold PLAY + tap FWD | Button style: on/off (playback LEDs 3–4 light) | – |
 | Hold PLAY + move fader N | Pan of track N: bottom = left, middle = centre, top = right | CC 24–27 (64 = centre) |
 | Tap PLAY (no fader moved) | Send the four fader positions again | CC 20–23 |
 | VOL+ / VOL− | The SP-1's own master volume (not sent) | – |
@@ -170,21 +172,23 @@ It is in `sp-mix-full-midi.bin` from the [v0.1.11-beta pre-release](https://gith
 
 **Pan with PLAY.** While PLAY is held, each fader is a pan control. It takes over only once it has passed the track's current pan, so the pan never jumps and you can set it wherever the volume fader happens to be. Until a fader has passed its pan, its track LED blinks; then it stays lit. The middle of the fader travel snaps to exact centre. The volumes are not touched, and after you let go of PLAY the faders pick up their volumes again. (Holding a track button and moving its fader still changes the pan step by step, as in the mixer.)
 
+<a id="button-style"></a>**Button style.** DAWs read a button in one of two ways, so the SP-1 can send either. **Toggle** (the default): every tap sends 127 and then 0, and the DAW flips mute or solo on each tap; Logic Pro's Learn MIDI works this way. **On/off**: a tap sends the new state, 127 for on and 0 for off, for DAWs that take the value as the state; a recording of it also plays back to the SP-1 in mixer mode as mute and solo. In controller mode, hold PLAY and tap BACK for toggle or FWD for on/off; for a second the left two (toggle) or right two (on/off) playback LEDs light up. The style is saved. `midi buttons toggle|onoff` in the console does the same.
+
 **LEDs in controller mode.** The track LEDs show the DAW's side: off when the track is muted (or silenced by a solo), fast blink when soloed, slow blink while the fader waits to pick up a volume, and otherwise the level coming in from the host. While PLAY is held they show the pan pickup as above.
 
 ### Good to know
 
-- **Buttons work like a controller's buttons:** every tap sends 127 and then 0, and the DAW toggles mute or solo on each tap.
+- **Buttons work like a controller's buttons:** in the toggle style every tap sends 127 and then 0, and the DAW toggles mute or solo on each tap; the on/off style sends the state instead (see [button style](#button-style)).
 - **The DAW's automation:** when the DAW sends a volume back (automation playback, or MIDI feedback), the SP-1's fader waits for it with the slow blink, so the DAW's fader does not jump when you take over. Mute and solo sent back by the DAW show on the track LEDs.
 - **No floods, no loops:** a resting fader sends nothing, a moving one at most every 10 ms. A value that came in from the DAW is never sent back, and what comes back for a control right after it moved (within 300 ms) is ignored as its echo, so input monitoring or MIDI thru in the DAW is harmless.
-- **Not saved:** controller mode is off after a restart. The master volume, the speaker mode and the LED mode carry over between the two modes; the mix and the scenes stay with the mixer. Scenes and program changes are not used in controller mode.
+- **Saved:** the SP-1 starts in the mode it was switched off in; a start in controller mode shows the same LED run as entering it. The master volume, the speaker mode and the LED mode are shared by the two modes and saved as they change, in either mode; the mix and the scenes stay with the mixer. Scenes and program changes are not used in controller mode.
 - **All four audio pairs pass at 0 dB.** If the DAW sends to outputs 3–8 as well, those are added at full level, so let the DAW mix down to 1–2.
 - The serial console shows `mode ctrl` at the end of the `ctrl` line, which then holds the DAW's side. `mode ctrl`, `mode mixer` and `midi dump` do the same as the buttons. Details: [docs/MIDI.md](docs/MIDI.md#controller-mode).
 
 ### If something does not work
 
 - **No "SP-Mix" MIDI port:** check that you flashed `sp-mix-full-midi.bin`, not `sp-mix-full.bin`, then unplug and replug USB. Close and reopen the DAW if it was open. In status LED mode (tap FWD or BACK), playback LED 1 shows whether the host has the SP-1 connected.
-- **A button needs two taps to undo:** the DAW reads the button as on/off rather than toggle. Set the assignment to toggle, or learn it again.
+- **A button needs two taps to undo, or flips back at once:** the DAW reads the button the other way. Switch the [button style](#button-style) (PLAY + BACK or FWD), or set the assignment in the DAW to toggle and learn it again.
 - **Nothing is heard:** check that the DAW plays to outputs 1–2 of SP-Mix and that the SP-1's master volume is up.
 - **A fader does nothing:** it may be waiting to pick up a value (slow blink): move it through the value the DAW has.
 

@@ -61,3 +61,69 @@ TEST(test_scene_roundtrip)
 	CHECK(master_db_to_gain(MASTER_DB_OFF) == 0.0f);
 	CHECK_NEAR(master_db_to_gain(-6), 0.5012, 1e-3);
 }
+
+TEST(test_scene_midi_record)
+{
+	struct persist a, b;
+	uint8_t main_buf[PERSIST_ENCODED_MAX];
+	uint8_t buf[PERSIST_MIDI_ENCODED_MAX + 4];
+	size_t n, m;
+
+	persist_default(&a);
+	CHECK(a.ctrl_mode == 0 && a.btn_onoff == 0);
+	a.current.vol[0] = 321;
+	a.ctrl_mode = 1;
+	a.btn_onoff = 1;
+
+	/* The main record is what it was: it carries no MIDI settings */
+	m = persist_encode(&a, main_buf, sizeof(main_buf));
+	memset(&b, 0x55, sizeof(b));
+	CHECK(persist_decode(&b, main_buf, m));
+	CHECK(b.current.vol[0] == 321);
+	CHECK(b.ctrl_mode == 0 && b.btn_onoff == 0);
+
+	/* The MIDI record sets those fields and nothing else */
+	n = persist_encode_midi(&a, buf, sizeof(buf));
+	CHECK(n > 0 && n <= PERSIST_MIDI_ENCODED_MAX);
+	CHECK(persist_encode_midi(&a, buf, n - 1) == 0);
+	CHECK(persist_decode_midi(&b, buf, n));
+	CHECK(b.ctrl_mode == 1 && b.btn_onoff == 1);
+	CHECK(b.current.vol[0] == 321);
+
+	/* Corruption is rejected and changes nothing */
+	for (size_t i = 0; i < n; i++) {
+		struct persist c;
+
+		memset(&c, 0xaa, sizeof(c));
+		buf[i] ^= 0x10;
+		CHECK(!persist_decode_midi(&c, buf, n));
+		CHECK(c.ctrl_mode == 0xaa && c.btn_onoff == 0xaa);
+		buf[i] ^= 0x10;
+	}
+	CHECK(!persist_decode_midi(&b, buf, n - 1));
+	/* Neither record is taken for the other */
+	CHECK(!persist_decode(&b, buf, n));
+	CHECK(!persist_decode_midi(&b, main_buf, m));
+
+	/* A later version's extra bytes are skipped */
+	uint8_t longer[PERSIST_MIDI_ENCODED_MAX + 4];
+	uint16_t crc;
+
+	memcpy(longer, buf, n - 2);
+	longer[3] += 2;
+	longer[n - 2] = 0x12;
+	longer[n - 1] = 0x34;
+	crc = crc16_ccitt(0xffff, longer, n);
+	longer[n] = (uint8_t)(crc & 0xff);
+	longer[n + 1] = (uint8_t)(crc >> 8);
+	persist_default(&b);
+	CHECK(persist_decode_midi(&b, longer, n + 2));
+	CHECK(b.ctrl_mode == 1 && b.btn_onoff == 1);
+
+	/* Flags are 0 or 1 */
+	a.ctrl_mode = 7;
+	a.btn_onoff = 0;
+	n = persist_encode_midi(&a, buf, sizeof(buf));
+	CHECK(persist_decode_midi(&b, buf, n));
+	CHECK(b.ctrl_mode == 1 && b.btn_onoff == 0);
+}

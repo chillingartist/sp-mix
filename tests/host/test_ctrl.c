@@ -13,6 +13,8 @@
 #define FN	BTN_BIT(BTN_FN)
 #define PLAY	BTN_BIT(BTN_PLAY)
 #define VUP	BTN_BIT(BTN_VOL_UP)
+#define BACK	BTN_BIT(BTN_BACK)
+#define FWD	BTN_BIT(BTN_FWD)
 
 static struct ctrl c;
 static struct ui u;
@@ -492,4 +494,163 @@ TEST(test_ctrl_play_layer)
 
 	/* No volumes sent for a PLAY press that moved faders */
 	CHECK(count(21) == 0 && count(22) == 0 && count(23) == 0);
+}
+
+TEST(test_ctrl_onoff_buttons)
+{
+	setup();
+	/* In the mixer, PLAY + FWD is no button style */
+	hold(PLAY, 80);
+	hold(PLAY | FWD, 80);
+	hold(PLAY, 30);
+	hold(0, 100);
+	CHECK(u.st.btn_onoff == 0);
+
+	setup();
+	fn_play();
+	hold(0, 400);
+
+	/* PLAY + tap FWD: on/off buttons, saved; the right playback LEDs
+	 * show it. Nothing sent, the LED mode as it was
+	 */
+	nsent = 0;
+	hold(PLAY, 80);
+	hold(PLAY | FWD, 80);
+	hold(PLAY, 30);
+	CHECK(u.st.btn_onoff == 1);
+	CHECK(u.dirty_urgent);
+	CHECK(out.led[4] == 0 && out.led[5] == 0);
+	CHECK(out.led[6] == 255 && out.led[7] == 255);
+	hold(0, 100);
+	CHECK(nsent == 0);
+	CHECK(c.rui.st.led_mode == LED_MODE_METER);
+	CHECK(u.st.led_mode == LED_MODE_METER);
+
+	/* A tap sends the new state, once */
+	tap(T(2));
+	CHECK(nsent == 1);
+	CHECK(sent[0].status == 0xb0 && sent[0].d1 == 103 && sent[0].d2 == 127);
+	CHECK(out.led[1] == 0);
+	tap(T(2));
+	CHECK(nsent == 2);
+	CHECK(sent[1].d1 == 103 && sent[1].d2 == 0);
+	CHECK(out.led[1] != 0);
+	/* Solo with PLAY the same */
+	nsent = 0;
+	hold(PLAY, 80);
+	hold(PLAY | T(4), 80);
+	hold(PLAY, 30);
+	hold(0, 100);
+	CHECK(nsent == 1);
+	CHECK(sent[0].d1 == 109 && sent[0].d2 == 127);
+
+	/* The DAW's echo is ignored, its later state taken */
+	rx(0xb0, 109, 127);
+	hold(0, 400);
+	rx(0xb0, 109, 0);
+	hold(0, 20);
+	CHECK(c.rui.st.current.solo == 0);
+	nsent = 0;
+	hold(PLAY, 80);
+	hold(PLAY | T(4), 80);
+	hold(PLAY, 30);
+	hold(0, 100);
+	CHECK(nsent == 1 && sent[0].d2 == 127);
+
+	/* PLAY + tap BACK: toggle again, the left LEDs */
+	hold(PLAY, 80);
+	hold(PLAY | BACK, 80);
+	hold(PLAY, 30);
+	CHECK(u.st.btn_onoff == 0);
+	CHECK(out.led[4] == 255 && out.led[5] == 255);
+	CHECK(out.led[6] == 0 && out.led[7] == 0);
+	hold(0, 100);
+	nsent = 0;
+	tap(T(1));
+	CHECK(nsent == 2);
+	CHECK(sent[0].d2 == 127 && sent[1].d2 == 0);
+	CHECK(c.rui.st.led_mode == LED_MODE_METER);
+
+	/* BACK alone still switches the LED mode, not the style */
+	tap(BACK);
+	CHECK(c.rui.st.led_mode == LED_MODE_STATUS);
+	CHECK(u.st.btn_onoff == 0);
+}
+
+TEST(test_ctrl_play_key_sag)
+{
+	int8_t bal;
+
+	setup();
+	fn_play();
+	hold(0, 400);
+
+	/* PLAY + fader 2 past the centre: the balance follows */
+	hold(PLAY, 100);
+	in.buttons = PLAY;
+	slide(1, 760, 4);
+	hold(PLAY, 30);
+	bal = c.rui.st.current.bal[1];
+	CHECK(bal > 20);
+	/* Another key down under PLAY loads the supply: the balance holds
+	 * still, whatever the fader reads meanwhile
+	 */
+	in.buttons = PLAY | FWD;
+	slide(1, 600, 4);
+	hold(PLAY | FWD, 20);
+	CHECK(c.rui.st.current.bal[1] == bal);
+	/* Let go: it follows again */
+	hold(PLAY, 100);
+	CHECK(c.rui.st.current.bal[1] < bal);
+	hold(0, 100);
+}
+
+TEST(test_ctrl_saved_settings)
+{
+	struct persist saved;
+	int8_t master;
+
+	setup();
+	CHECK(u.st.ctrl_mode == 0);
+	fn_play();
+	/* The mode is saved */
+	CHECK(u.st.ctrl_mode == 1);
+	CHECK(u.dirty_urgent);
+	hold(0, 100);
+
+	/* Settings changed in controller mode are the mixer's, which is what
+	 * is saved, without leaving the mode first (power off from here)
+	 */
+	master = u.st.current.master_db;
+	tap(VUP);
+	CHECK(c.rui.st.current.master_db > master);
+	CHECK(u.st.current.master_db == c.rui.st.current.master_db);
+	tap(FWD);
+	CHECK(c.rui.st.led_mode == LED_MODE_STATUS);
+	CHECK(u.st.led_mode == LED_MODE_STATUS);
+	ui_set_spk_mode(&c.rui, SPK_OFF, in.now_ms);
+	step();
+	CHECK(u.st.current.spk_mode == SPK_OFF);
+	CHECK(u.dirty);
+	/* The mix stays the DAW's side */
+	tap(T(1));
+	CHECK(c.rui.st.current.mute == 0x1);
+	CHECK(u.st.current.mute == 0);
+
+	/* Leaving: saved as off, the settings kept */
+	fn_play();
+	CHECK(u.st.ctrl_mode == 0);
+	CHECK(u.st.led_mode == LED_MODE_STATUS);
+	CHECK(u.st.current.spk_mode == SPK_OFF);
+
+	/* Starting with the mode saved, as control.c does */
+	saved = u.st;
+	saved.ctrl_mode = 1;
+	ui_init(&u, &saved, in.fader, in.now_ms);
+	ctrl_init(&c, 0);
+	nsent = 0;
+	ctrl_set_mode(&c, &u, &in, true);
+	step();
+	CHECK(c.active);
+	CHECK(count(20) == 1 && count(23) == 1);
 }

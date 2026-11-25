@@ -19,8 +19,8 @@
 enum { CTRL_VOL = 0, CTRL_BAL = 4, CTRL_MUTE = 8, CTRL_SOLO = 12 };
 static const uint8_t cc_base[4] = { 20, 24, 102, 106 };
 
-enum { ANIM_NONE, ANIM_ENTER, ANIM_LEAVE, ANIM_SENT };
-static const uint16_t anim_len[] = { 0, 800, 800, 160 };
+enum { ANIM_NONE, ANIM_ENTER, ANIM_LEAVE, ANIM_SENT, ANIM_STYLE };
+static const uint16_t anim_len[] = { 0, 800, 800, 160, CTRL_STYLE_SHOW_MS };
 
 /* Brightness that marks controller mode on the first playback LED */
 #define CTRL_LED_MARK	40
@@ -182,18 +182,36 @@ static void take_physical(struct ctrl *c, uint32_t now)
 	c->seen = *s;
 }
 
-static void send_changes(struct ctrl *c, uint32_t now)
+static void send_changes(struct ctrl *c, uint32_t now, bool onoff)
 {
 	for (int id = 0; id < CTRL_IDS; id++) {
 		if (c->last[id] == c->known[id]) {
 			continue;
 		}
-		/* Mute and solo are buttons; volume and balance rate limited */
-		if (id >= CTRL_MUTE) {
+		/* Mute and solo are buttons, toggle or on/off; volume and
+		 * balance rate limited
+		 */
+		if (id >= CTRL_MUTE && !onoff) {
 			send_pulse(c, id, now);
-		} else if (after(now, c->due_ms[id])) {
+		} else if (id >= CTRL_MUTE || after(now, c->due_ms[id])) {
 			send_id(c, id, now);
 		}
+	}
+}
+
+/* The settings both sides have are the mixer's: that is what is saved */
+static void sync_settings(struct ctrl *c, struct ui *local, uint32_t now)
+{
+	const struct persist *r = &c->rui.st;
+
+	if (r->current.master_db != local->st.current.master_db) {
+		ui_set_master_db(local, r->current.master_db, now);
+	}
+	if (r->current.spk_mode != local->st.current.spk_mode) {
+		ui_set_spk_mode(local, (enum spk_mode)r->current.spk_mode, now);
+	}
+	if (r->led_mode != local->st.led_mode) {
+		ui_set_led_mode(local, (enum led_mode)r->led_mode, now);
 	}
 }
 
@@ -218,16 +236,20 @@ static int fader_to_bal(uint16_t f, uint8_t *p7)
  *  - fader N is the balance of track N, absolute (bottom left, middle
  *    centre, top right), once it has passed the current balance: a pickup,
  *    so the balance does not jump and the volume does not matter;
- *  - tapping track key N toggles its solo.
- * rui sees neither: the faders stay where they were before the press, and
- * the track keys pressed under PLAY stay hidden from it until released. Once
- * PLAY is up and the supply has recovered, the faders pick up the volumes.
+ *  - tapping track key N toggles its solo;
+ *  - tapping BACK or FWD picks the button style (style_req).
+ * rui sees none of it: the faders stay where they were before the press, and
+ * the keys pressed under PLAY stay hidden from it until released. Once PLAY
+ * is up and the supply has recovered, the faders pick up the volumes.
  */
 static void play_layer(struct ctrl *c, const struct ui_in *in, struct ui_in *rin,
 		       bool play, uint32_t pressed, uint32_t released, uint32_t now)
 {
 	struct scene *s = &c->rui.st.current;
 	const uint32_t b = in->buttons & ((1u << BTN_COUNT) - 1u);
+	/* Ladder keys besides PLAY: they load the supply the faders share */
+	const uint32_t others = b & ~(B(PLAY) | B(FN));
+	static const uint32_t nav[2] = { B(BACK), B(FWD) };
 
 	if (play && (pressed & B(PLAY))) {
 		c->pan_armed = false;
@@ -235,10 +257,25 @@ static void play_layer(struct ctrl *c, const struct ui_in *in, struct ui_in *rin
 		c->frozen = true;
 		memcpy(c->freeze, c->prev_fader, sizeof(c->freeze));
 		/* Keys rui already has are no taps for it any more */
-		if (b & BTN_TRACK_MASK) {
+		if (others) {
 			c->rui.chord |= CHORD_CANCEL;
 		}
 	}
+
+	/* Button style: BACK toggle, FWD on/off, a tap under PLAY */
+	for (int k = 0; k < 2; k++) {
+		if ((pressed & nav[k]) && play) {
+			c->nav_masked |= nav[k];
+			c->nav_ms[k] = now;
+		}
+		if ((released & nav[k]) && (c->nav_masked & nav[k])) {
+			c->nav_masked &= ~nav[k];
+			if (now - c->nav_ms[k] <= UI_TAP_MAX_MS) {
+				c->style_req = (int8_t)k;
+			}
+		}
+	}
+	rin->buttons &= ~c->nav_masked;
 
 	/* Solo: track keys pressed under PLAY, a tap whenever they come up */
 	for (int t = 0; t < SP1M_TRACKS; t++) {
@@ -260,11 +297,11 @@ static void play_layer(struct ctrl *c, const struct ui_in *in, struct ui_in *rin
 	rin->buttons &= ~(uint32_t)c->trk_masked;
 
 	if (play) {
-		/* A track key loads the supply further: no balance meanwhile */
-		if (b & BTN_TRACK_MASK) {
+		/* Another key loads the supply further: no balance meanwhile */
+		if (others) {
 			c->trk_free_ms = now;
 		}
-		if (now - c->play_ms >= UI_SAG_SETTLE_MS && !(b & BTN_TRACK_MASK) &&
+		if (now - c->play_ms >= UI_SAG_SETTLE_MS && !others &&
 		    now - c->trk_free_ms >= UI_SAG_HOLDOFF_MS) {
 			for (int t = 0; t < SP1M_TRACKS; t++) {
 				const uint16_t f = in->fader[t];
@@ -353,7 +390,10 @@ static void enter(struct ctrl *c, struct ui *local, const struct ui_in *in)
 	c->pan_armed = false;
 	c->pan_used = false;
 	c->trk_masked = 0;
+	c->nav_masked = 0;
+	c->style_req = -1;
 	c->usb_prev = in->usb_configured;
+	ui_set_ctrl_mode(local, true, now);
 	dump(c, now);
 	c->anim = ANIM_ENTER;
 	c->anim_ms = now;
@@ -362,14 +402,12 @@ static void enter(struct ctrl *c, struct ui *local, const struct ui_in *in)
 static void leave(struct ctrl *c, struct ui *local, const struct ui_in *in)
 {
 	const uint32_t now = in->now_ms;
-	const struct persist *r = &c->rui.st;
 
 	/* The master volume and the settings as they are now; the mix as it
 	 * was, the faders waiting to pick it up
 	 */
-	ui_set_master_db(local, r->current.master_db, now);
-	ui_set_spk_mode(local, (enum spk_mode)r->current.spk_mode, now);
-	ui_set_led_mode(local, (enum led_mode)r->led_mode, now);
+	sync_settings(c, local, now);
+	ui_set_ctrl_mode(local, false, now);
 	ui_resume(local, in);
 
 	c->active = false;
@@ -398,6 +436,9 @@ static void overlay(struct ctrl *c, struct ui_out *out, uint32_t now)
 		for (uint32_t i = 0; i < 4; i++) {
 			if (c->anim == ANIM_SENT) {
 				pl[i] = 255;
+			} else if (c->anim == ANIM_STYLE) {
+				/* Toggle (BACK): the left two, on/off (FWD): the right */
+				pl[i] = (i >= 2) == c->style_shown ? 255 : 0;
 			} else {
 				const uint32_t lit = c->anim == ANIM_ENTER ? step : 3u - step;
 
@@ -419,6 +460,7 @@ void ctrl_init(struct ctrl *c, uint8_t channel)
 	memset(c, 0, sizeof(*c));
 	c->available = channel <= 15;
 	c->channel = channel;
+	c->style_req = -1;
 }
 
 struct ui *ctrl_ui(struct ctrl *c, struct ui *local)
@@ -498,7 +540,16 @@ void ctrl_tick(struct ctrl *c, struct ui *local, const struct ui_in *in,
 	play_layer(c, in, &rin, play, pressed, released, now);
 	ui_tick(&c->rui, &rin, out);
 	take_physical(c, now);
+	sync_settings(c, local, now);
 	memcpy(c->prev_fader, in->fader, sizeof(c->prev_fader));
+
+	if (c->style_req >= 0) {
+		ui_set_btn_onoff(local, c->style_req != 0, now);
+		c->style_shown = c->style_req != 0;
+		c->style_req = -1;
+		c->anim = ANIM_STYLE;
+		c->anim_ms = now;
+	}
 
 	if (play_tap && !c->pan_used) {
 		dump(c, now);
@@ -513,7 +564,7 @@ void ctrl_tick(struct ctrl *c, struct ui *local, const struct ui_in *in,
 	if (c->dump_pending && after(now, c->dump_ms)) {
 		dump(c, now);
 	}
-	send_changes(c, now);
+	send_changes(c, now, local->st.btn_onoff != 0);
 
 	/* The DAW mixes: the host's audio passes at 0 dB, master applied */
 	for (int t = 0; t < SP1M_TRACKS; t++) {

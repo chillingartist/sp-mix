@@ -15,6 +15,10 @@
 #include "store.h"
 
 #define PERSIST_ID	0x5301	/* distinct from ids other SP-1 firmware used */
+/* The MIDI settings: a record of their own, which older SP-Mix firmware
+ * leaves alone, so going back to it keeps the mix and the scenes
+ */
+#define PERSIST_MIDI_ID	0x5302
 
 /* Stay clear of the application above and the bootloader page below. */
 BUILD_ASSERT(FIXED_PARTITION_OFFSET(storage_partition) >=
@@ -55,6 +59,15 @@ static int save(const struct persist *p)
 
 	/* NVS skips the write when the data is unchanged. */
 	w = nvs_write(&fs, PERSIST_ID, buf, n);
+	if (w < 0) {
+		return (int)w;
+	}
+
+	n = persist_encode_midi(p, buf, sizeof(buf));
+	if (n == 0) {
+		return -EINVAL;
+	}
+	w = nvs_write(&fs, PERSIST_MIDI_ID, buf, n);
 
 	return w < 0 ? (int)w : 0;
 }
@@ -131,11 +144,18 @@ bool store_load(struct persist *out)
 	}
 
 	n = nvs_read(&fs, PERSIST_ID, buf, sizeof(buf));
-	if (n <= 0 || n > (ssize_t)sizeof(buf)) {
+	if (n <= 0 || n > (ssize_t)sizeof(buf) ||
+	    !persist_decode(out, buf, (size_t)n)) {
 		return false;
 	}
 
-	return persist_decode(out, buf, (size_t)n);
+	/* Saved by older firmware, or unreadable: the MIDI defaults */
+	n = nvs_read(&fs, PERSIST_MIDI_ID, buf, sizeof(buf));
+	if (n > 0 && n <= (ssize_t)sizeof(buf)) {
+		(void)persist_decode_midi(out, buf, (size_t)n);
+	}
+
+	return true;
 }
 
 void store_request(const struct persist *p, uint32_t gen)
